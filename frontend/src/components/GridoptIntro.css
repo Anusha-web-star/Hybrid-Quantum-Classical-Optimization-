@@ -1,0 +1,36 @@
+/*
+ * Intro video layer.
+ *
+ * The full-viewport hero shown while the user is signed out and has not opened
+ * the access screen. It plays and loops; the access controls (IntroAuthBar) sit
+ * above it at a higher z-index. Purely a cover; it never touches the screens
+ * that replace it.
+ */
+
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  overflow: hidden;
+  background: #000;
+}
+
+/*
+ * A true 16:9 box scaled until it covers the viewport in both axes, centred so
+ * the overflow is cropped evenly. The frame keeps its ratio at every window
+ * size, and no letterbox or pillarbox can appear.
+ */
+.intro__video {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100vw;
+  height: 56.25vw;          /* 100 / (16 / 9) */
+  min-width: 177.7778vh;    /* 100 * (16 / 9) */
+  min-height: 100vh;
+  object-fit: cover;
+  background: #000;
+  border: 0;
+  outline: none;
+}

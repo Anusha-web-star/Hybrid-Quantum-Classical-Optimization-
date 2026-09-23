@@ -1,0 +1,140 @@
+.blank {
+  padding: var(--s8) var(--s4);
+  color: var(--ink-4);
+  font-size: var(--t-sm);
+  text-align: center;
+}
+
+/* --- figures --------------------------------------------------------------- */
+.figs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: var(--s4);
+  padding-top: var(--s4);
+}
+
+.fig {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin: 0;
+  min-width: 0;
+}
+
+.fig__frame {
+  display: block;
+  padding: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  overflow: hidden;
+  cursor: zoom-in;
+  transition: border-color var(--fast) var(--ease);
+}
+
+.fig__frame:hover {
+  border-color: var(--line-focus);
+}
+
+.fig__frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.fig__cap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-3);
+  font-size: var(--t-2xs);
+}
+
+.zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: var(--s6);
+  background: rgba(6, 7, 9, 0.92);
+  cursor: zoom-out;
+  animation: fade-in var(--base) var(--ease-out) both;
+}
+
+.zoom img {
+  max-width: min(100%, 1500px);
+  max-height: 92vh;
+  background: #fff;
+  border-radius: var(--r-surface);
+}
+
+/* --- method ---------------------------------------------------------------- */
+.method {
+  padding-top: var(--s2);
+}
+
+.method__checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+  gap: 5px var(--s5);
+  margin: var(--s3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.method__checks li {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: var(--t-xs);
+}
+
+.method__checks li::before {
+  content: '';
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  transform: translateY(-2px);
+}
+
+.method__checks li.is-ok::before {
+  background: var(--ok);
+}
+
+.method__checks li.is-bad::before {
+  background: var(--bad);
+}
+
+.method__checks li.is-bad {
+  color: var(--bad);
+}
+
+.method__spec {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: var(--s3) var(--s5);
+  margin: var(--s3) 0 0;
+}
+
+.method__spec > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.method__spec dt {
+  color: var(--ink-4);
+  font-size: var(--t-3xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.method__spec dd {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--t-xs);
+  overflow-wrap: anywhere;
+}

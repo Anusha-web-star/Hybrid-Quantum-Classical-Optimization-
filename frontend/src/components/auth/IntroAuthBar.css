@@ -1,0 +1,81 @@
+/*
+ * Access controls over the intro hero.
+ *
+ * Fixed to the top-right, above the intro layer (which sits at z-index 9999), so
+ * the buttons are clickable at any moment of the animation. Deliberately subtle:
+ * a glass pill for Sign In, a lit cyan pill for Register, echoing the access
+ * screen's palette without competing with the hero. No layout flow, so it can
+ * never introduce scrolling.
+ */
+
+.introauth {
+  position: fixed;
+  top: clamp(14px, 2.4vw, 28px);
+  right: clamp(14px, 2.4vw, 32px);
+  z-index: 10000;
+  display: flex;
+  gap: 10px;
+  font-family: 'Poppins', var(--sans, sans-serif);
+}
+
+.introauth__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  color: #eaf9ff;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 999px;
+  border: 1px solid rgba(120, 226, 248, 0.32);
+  background: rgba(8, 20, 32, 0.44);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 14px rgba(2, 12, 20, 0.35);
+  transition: border-color 180ms ease, background 180ms ease,
+    box-shadow 200ms ease, transform 120ms ease, filter 180ms ease;
+}
+
+.introauth__btn:hover {
+  border-color: rgba(120, 226, 248, 0.7);
+  background: rgba(11, 26, 41, 0.62);
+  box-shadow: 0 4px 20px rgba(53, 201, 234, 0.28);
+}
+
+.introauth__btn:active {
+  transform: translateY(1px);
+}
+
+.introauth__btn:focus-visible {
+  outline: 2px solid rgba(111, 224, 245, 0.8);
+  outline-offset: 2px;
+}
+
+/* Register is the lit call to action, in the access screen's cyan gradient. */
+.introauth__btn--primary {
+  color: #fff;
+  border-color: rgba(120, 226, 248, 0.55);
+  background: linear-gradient(180deg, #3fb6d8 0%, #2694bb 52%, #1b7ba1 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 4px 18px rgba(53, 201, 234, 0.32);
+}
+
+.introauth__btn--primary:hover {
+  filter: brightness(1.08);
+  border-color: rgba(120, 226, 248, 0.8);
+  background: linear-gradient(180deg, #3fb6d8 0%, #2694bb 52%, #1b7ba1 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 6px 24px rgba(53, 201, 234, 0.44);
+}
+
+@media (max-width: 520px) {
+  .introauth__btn {
+    padding: 7px 13px;
+    font-size: 12px;
+  }
+}

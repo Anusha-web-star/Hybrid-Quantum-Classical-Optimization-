@@ -1,0 +1,134 @@
+/*
+ * Lives in the canvas's docked bar. Nothing here floats, so it cannot cover the
+ * map, the station labels or the legend beside it.
+ */
+.transport {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex: none;
+  animation: fade-in var(--base) var(--ease-out) both;
+}
+
+.transport--static {
+  padding: 4px 0;
+}
+
+.transport__reduced {
+  color: var(--ink-4);
+  font-size: var(--t-3xs);
+  letter-spacing: 0.06em;
+}
+
+.transport__btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  color: var(--ink-2);
+  background: var(--bg-hover);
+  border-radius: 50%;
+  transition:
+    background var(--fast) var(--ease),
+    color var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+
+.transport__btn:hover {
+  color: var(--ink);
+  background: var(--line-strong);
+}
+
+.transport__btn:active {
+  transform: scale(0.94);
+}
+
+.transport__btn--primary {
+  color: var(--bg);
+  background: var(--accent);
+}
+
+.transport__btn--primary:hover {
+  color: var(--bg);
+  background: var(--accent-bright);
+}
+
+/* --- readout --------------------------------------------------------------- */
+.transport__readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.transport__step {
+  color: var(--accent);
+  font-size: var(--t-3xs);
+  flex: none;
+}
+
+.transport__station {
+  max-width: 190px;
+  color: var(--ink-2);
+  font-size: var(--t-2xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.transport__progress {
+  width: 74px;
+  height: 2px;
+  flex: none;
+  background: var(--line-strong);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.transport__progressfill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 1px;
+  transition: width var(--base) linear;
+}
+
+/* --- speed ----------------------------------------------------------------- */
+.transport__speeds {
+  display: flex;
+  gap: 1px;
+  flex: none;
+  padding-left: var(--s2);
+  border-left: 1px solid var(--line);
+}
+
+.transport__speed {
+  padding: 3px 7px;
+  color: var(--ink-4);
+  font-family: var(--mono);
+  font-size: var(--t-3xs);
+  border-radius: var(--r-pill);
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.transport__speed:hover {
+  color: var(--ink-2);
+}
+
+.transport__speed.is-on {
+  color: var(--accent);
+  background: var(--accent-wash);
+}
+
+@media (max-width: 1100px) {
+  .transport__progress {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .transport__station {
+    max-width: 120px;
+  }
+}

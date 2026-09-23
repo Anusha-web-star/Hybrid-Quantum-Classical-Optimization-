@@ -1,0 +1,122 @@
+/*
+ * GRIDOPT design tokens.
+ *
+ * Instrument panel, not a document. Cool near-black ground, one accent, and
+ * colour used only where it encodes something.
+ *
+ * Dials: DESIGN_VARIANCE 7 / MOTION_INTENSITY 4 / VISUAL_DENSITY 8.
+ * At this density, metrics sit in plain layout with hairline grouping rather
+ * than in card containers.
+ *
+ * ACCENT LOCK: amber is the only accent on the page. It reads as instrument
+ * illumination and keeps the UI away from the default blue/violet glow.
+ *
+ * DATA ENCODING (semantic, not decoration - the one place a second hue is
+ * allowed): the classical tour is near-white, the hybrid tour is amber. The
+ * transmission network underneath both is dim grey. Three values, three
+ * weights, legible without a legend.
+ *
+ * RADIUS LOCK: surfaces 10px, controls 8px, segmented toggles full pill.
+ * Nothing else.
+ */
+
+:root {
+  /* --- ground ---------------------------------------------------------- */
+  --bg: #0a0b0d;
+  --bg-raised: #101216;
+  --bg-inset: #08090b;
+  --bg-hover: #16191e;
+
+  /* --- structure: hairlines, never decoration ------------------------- */
+  --line: #1c2026;
+  --line-strong: #282d35;
+  --line-focus: #3a414b;
+
+  /* --- ink -------------------------------------------------------------- */
+  --ink: #edeef0;
+  --ink-2: #a8adb6;
+  --ink-3: #71777f;
+  --ink-4: #4d535b;
+
+  /* --- the single accent ---------------------------------------------- */
+  --accent: #e3a44f;
+  --accent-bright: #f2bc73;
+  --accent-dim: #8a6529;
+  --accent-wash: rgba(227, 164, 79, 0.1);
+  --accent-line: rgba(227, 164, 79, 0.34);
+
+  /* --- data encoding ---------------------------------------------------- */
+  --classical: #e8eaed;
+  --classical-wash: rgba(232, 234, 237, 0.09);
+  --quantum: var(--accent);
+  --quantum-wash: var(--accent-wash);
+  --network-line: #363c45;
+
+  /* --- state, used only for real state ---------------------------------- */
+  --ok: #56b981;
+  --ok-wash: rgba(86, 185, 129, 0.11);
+  --bad: #d9645f;
+  --bad-wash: rgba(217, 100, 95, 0.11);
+
+  /* --- type ------------------------------------------------------------- */
+  --sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Consolas, monospace;
+
+  --t-display: 1.5rem;
+  --t-lg: 1.0625rem;
+  --t-md: 0.875rem;
+  --t-sm: 0.8125rem;
+  --t-xs: 0.75rem;
+  --t-2xs: 0.6875rem;
+  --t-3xs: 0.625rem;
+
+  /* --- space: 4px rhythm ------------------------------------------------ */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 20px;
+  --s6: 24px;
+  --s8: 32px;
+  --s10: 40px;
+
+  /* --- radius lock ------------------------------------------------------ */
+  --r-surface: 10px;
+  --r-control: 8px;
+  --r-pill: 999px;
+
+  /* --- shell ------------------------------------------------------------ */
+  --rail-h: 52px;
+  --col-control: 296px;
+  --col-results: 332px;
+  --drawer-tab-h: 40px;
+
+  /* --- motion: restrained, meaning-carrying only ------------------------ */
+  --fast: 120ms;
+  --base: 200ms;
+  --slow: 420ms;
+  --draw: 1100ms;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Shadows are tinted to the ground, never pure black, never a glow. */
+  --shadow: 0 12px 32px rgba(4, 5, 7, 0.6);
+  --shadow-lift: 0 20px 52px rgba(4, 5, 7, 0.72);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --fast: 1ms;
+    --base: 1ms;
+    --slow: 1ms;
+    --draw: 1ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

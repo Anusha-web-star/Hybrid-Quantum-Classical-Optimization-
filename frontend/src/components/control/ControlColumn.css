@@ -1,0 +1,307 @@
+.control {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-raised);
+  border-right: 1px solid var(--line);
+  overflow: hidden;
+}
+
+/* Hairlines group the column. No card containers at this density. */
+.control__block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s4);
+  border-bottom: 1px solid var(--line);
+}
+
+/*
+ * Origin, depth and run keep their height whatever happens. Only the status
+ * block gives way, scrolling inside itself, so the controls are never pushed
+ * out of reach when the drawer takes the lower half of the panel.
+ */
+.control__block--grow {
+  flex: 1;
+  min-height: 0;
+  border-bottom: 0;
+  overflow-y: auto;
+}
+
+/* --- depth selector ------------------------------------------------------ */
+.depth {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  padding: 1px;
+  background: var(--line);
+  border-radius: var(--r-control);
+  overflow: hidden;
+}
+
+.depth__opt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s2) var(--s3) 9px;
+  text-align: left;
+  background: var(--bg-raised);
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+
+.depth__opt:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.depth__opt.is-on {
+  background: var(--accent-wash);
+}
+
+.depth__opt:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.depth__name {
+  color: var(--ink-2);
+  font-size: var(--t-sm);
+  font-weight: 550;
+}
+
+.depth__opt.is-on .depth__name {
+  color: var(--accent-bright);
+}
+
+.depth__spec,
+.depth__eta {
+  color: var(--ink-4);
+  font-size: var(--t-3xs);
+  letter-spacing: 0.02em;
+}
+
+/* --- run button ----------------------------------------------------------- */
+.runbtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  width: 100%;
+  padding: 11px var(--s4);
+  color: var(--bg);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background: var(--accent);
+  border-radius: var(--r-control);
+  transition:
+    background var(--fast) var(--ease),
+    transform var(--fast) var(--ease),
+    color var(--fast) var(--ease);
+}
+
+.runbtn:hover:not(:disabled) {
+  background: var(--accent-bright);
+}
+
+/* Tactile: the surface takes the press. */
+.runbtn:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+.runbtn:disabled {
+  cursor: not-allowed;
+}
+
+/* Running is an occupied state. Merely unavailable is a dead one. */
+.runbtn:disabled {
+  opacity: 0.4;
+}
+
+.runbtn.is-busy:disabled {
+  opacity: 1;
+  color: var(--accent);
+  background: var(--accent-wash);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+
+.runbtn__spin {
+  animation: spin 900ms linear infinite;
+}
+
+.runbtn__clock {
+  margin-left: auto;
+  font-size: var(--t-2xs);
+  opacity: 0.8;
+}
+
+/* --- stages ---------------------------------------------------------------- */
+.control__statushead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.control__clear {
+  color: var(--ink-4);
+  font-family: var(--mono);
+  font-size: var(--t-3xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: color var(--fast) var(--ease);
+}
+
+.control__clear:hover {
+  color: var(--ink-2);
+}
+
+.stages {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stage {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  color: var(--ink-4);
+  font-size: var(--t-xs);
+  transition: color var(--base) var(--ease);
+}
+
+.stage__tick {
+  width: 14px;
+  height: 2px;
+  background: var(--line-strong);
+  border-radius: 1px;
+  transition: background var(--base) var(--ease), width var(--base) var(--ease);
+}
+
+.stage.is-done {
+  color: var(--ink-3);
+}
+
+.stage.is-done .stage__tick {
+  background: var(--ok);
+}
+
+.stage.is-active {
+  color: var(--accent-bright);
+}
+
+/*
+ * Indeterminate on purpose. The backend reports no completion fraction, so the
+ * running stage pulses rather than showing a percentage that would be invented.
+ */
+.stage.is-active .stage__tick {
+  width: 22px;
+  background: var(--accent);
+  animation: stage-pulse 1.15s var(--ease) infinite;
+}
+
+.stage.is-failed {
+  color: var(--bad);
+}
+
+.stage.is-failed .stage__tick {
+  background: var(--bad);
+}
+
+@keyframes stage-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* --- log ------------------------------------------------------------------- */
+.log {
+  flex: none;
+  min-height: 58px;
+  max-height: 168px;
+  padding: var(--s3);
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  font-family: var(--mono);
+  font-size: var(--t-3xs);
+  line-height: 1.85;
+}
+
+.log__line {
+  color: var(--ink-3);
+  animation: fade-in var(--fast) var(--ease-out) both;
+}
+
+.log__line--idle {
+  color: var(--ink-4);
+  font-family: var(--sans);
+  font-size: var(--t-xs);
+  line-height: 1.5;
+}
+
+.log__line--success {
+  color: var(--ok);
+}
+
+.log__line--error {
+  color: var(--bad);
+}
+
+.log__line--dim {
+  color: var(--ink-4);
+}
+
+/* --- outcome --------------------------------------------------------------- */
+.control__verdict {
+  padding: var(--s3);
+  color: var(--ink-2);
+  font-size: var(--t-xs);
+  line-height: 1.55;
+  background: var(--ok-wash);
+  border-radius: var(--r-control);
+  box-shadow: inset 0 0 0 1px rgba(86, 185, 129, 0.24);
+  animation: rise var(--base) var(--ease-out) both;
+}
+
+.control__verdict strong {
+  color: var(--ok);
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.control__error {
+  display: flex;
+  gap: var(--s2);
+  padding: var(--s3);
+  color: var(--bad);
+  background: var(--bad-wash);
+  border-radius: var(--r-control);
+  box-shadow: inset 0 0 0 1px rgba(217, 100, 95, 0.26);
+}
+
+.control__error svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.control__errortitle {
+  font-size: var(--t-xs);
+  font-weight: 600;
+}
+
+.control__errorbody {
+  color: var(--ink-2);
+  font-size: var(--t-xs);
+  line-height: 1.5;
+}
+
+.control__errorhint {
+  margin-top: 5px;
+  color: var(--ink-3);
+  font-size: var(--t-3xs);
+  overflow-x: auto;
+  white-space: nowrap;
+}

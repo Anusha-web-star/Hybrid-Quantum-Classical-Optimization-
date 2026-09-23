@@ -1,0 +1,36 @@
+# Phase 3 — FastAPI backend over the existing Phase 1 / Phase 2 solvers.
+
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+pydantic==2.13.5
+pydantic-settings==2.15.0
+python-dotenv==1.2.3
+
+# Auth — verify Supabase-issued user JWTs (ES256 via the project's public JWKS).
+# The [crypto] extra pulls in `cryptography`, needed for the asymmetric algs.
+PyJWT[crypto]==2.13.0
+
+# Assistant (RAG) - no package required.
+#
+# Generation runs on a LOCAL model through Ollama, reached with one POST to
+# 127.0.0.1 using `urllib` from the standard library. There is no API key, no
+# account, no per-token cost, and no cloud SDK: the GRIDOPT dataset, solver
+# results and documents never leave this machine.
+#
+# Ollama itself is the only prerequisite, and it is not a Python package:
+#   https://ollama.com/download   then:   ollama pull llama3.2:3b
+#
+# Retrieval needs no extra package either: it is BM25 computed in process over
+# the project's own chunks. See backend/app/assistant/retrieval.py for why this
+# is not pgvector.
+
+# Test
+pytest==9.1.1
+httpx==0.28.1
+
+# The API imports phase1/ and phase2/ from the repository root rather than
+# reimplementing them, so it also needs what those already require:
+#   pandas, matplotlib          (dataset loading and the route maps)
+#   qiskit, qiskit-aer          (the hybrid QAOA simulator)
+# Install them with:
+#   pip install pandas matplotlib qiskit qiskit-aer qiskit-ibm-runtime

@@ -1,0 +1,40 @@
+.sampling {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: fade-in var(--base) var(--ease-out) both;
+}
+
+/*
+ * Short and contained. The field is a texture that says work is happening, not
+ * a feature competing with the map for attention.
+ */
+.sampling__canvas {
+  position: relative;
+  height: 62px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  overflow: hidden;
+  /* The vendored component paints its own ground; this keeps the corners clean. */
+  isolation: isolate;
+}
+
+/* A run under reduced motion still gets the panel, just without the animation. */
+.sampling__still {
+  width: 100%;
+  height: 100%;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      var(--accent-dim) 0 1px,
+      transparent 1px 10px
+    ),
+    var(--bg-inset);
+  opacity: 0.32;
+}
+
+.sampling__caption {
+  color: var(--ink-4);
+  font-size: var(--t-3xs);
+  letter-spacing: 0.08em;
+}

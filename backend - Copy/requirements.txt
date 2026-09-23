@@ -1,0 +1,19 @@
+# Phase 3 — FastAPI backend over the existing Phase 1 / Phase 2 solvers.
+# Database and auth dependencies are added in their own phases.
+
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+pydantic==2.13.5
+pydantic-settings==2.15.0
+python-dotenv==1.2.3
+
+# Test
+pytest==9.1.1
+httpx==0.28.1
+
+# The API imports phase1/ and phase2/ from the repository root rather than
+# reimplementing them, so it also needs what those already require:
+#   pandas, matplotlib          (dataset loading and the route maps)
+#   qiskit, qiskit-aer          (the hybrid QAOA simulator)
+# Install them with:
+#   pip install pandas matplotlib qiskit qiskit-aer qiskit-ibm-runtime

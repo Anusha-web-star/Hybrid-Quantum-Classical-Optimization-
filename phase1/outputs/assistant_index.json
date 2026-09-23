@@ -1,0 +1,1605 @@
+{
+  "version": 1,
+  "manifest": {
+    "built_at": "2026-09-10T14:18:18+00:00",
+    "dataset_path": "C:\\Users\\Anusha\\OneDrive\\Desktop\\hybrid-quantum-energy-tsp\\data\\transmition_lines.csv.csv",
+    "stations": 26,
+    "transmission_lines": 38,
+    "csv_rows": 38,
+    "chunks": 127,
+    "documents_missing": []
+  },
+  "chunks": [
+    {
+      "id": "network:summary",
+      "kind": "dataset",
+      "title": "Network summary",
+      "locator": "transmition_lines.csv.csv (whole-file summary)",
+      "text": "NETWORK SUMMARY (dataset record).\nDataset file: transmition_lines.csv.csv\nStations: 26\nRows in the CSV: 38\nRoutable transmission lines (positive Distance_km): 38\nConnected components: 1\nGraph is fully connected: True\nIsolated stations: none\nShortest line: 5.013 km\nLongest line: 141.886 km\nTotal line length in the dataset: 2,690.052 km\nOptional-attribute coverage:\n  - Voltage_kV: present on 38 of 38 CSV rows\n  - Capacity_MW: present on 38 of 38 CSV rows\n  - Loss_Percent: present on 38 of 38 CSV rows\n  - Energy_Loss_MW: present on 38 of 38 CSV rows\n\nThis graph represents an electricity transmission network. The TSP optimization in this project uses the route-distance objective (Distance_km) only. The electrical parameters above let the resulting routes be EVALUATED for energy implications afterwards; they are not part of the optimization cost.",
+      "metadata": {
+        "stations": 26,
+        "rows_in_csv": 38,
+        "routable_lines": 38,
+        "components": 1,
+        "shortest_line_km": 5.013,
+        "longest_line_km": 141.886,
+        "total_line_km": 2690.052
+      }
+    },
+    {
+      "id": "reference:objective",
+      "kind": "doc",
+      "title": "What GRIDOPT optimizes (route distance) and how the hybrid QAOA loop works",
+      "locator": "DATASET.md / docs/PHASES.md - project methodology, stated for retrieval",
+      "text": "GRIDOPT OPTIMIZATION OBJECTIVE - what is and is not optimized.\n\nThe graph represents an electricity transmission network.\nThe TSP optimization uses the project's defined route-distance objective: Distance_km, and nothing else. Both solvers minimize the same quantity.\n  - The classical solver is Nearest Neighbour (phase1/nn_tsp.py).\n  - The hybrid solver is QAOA used as the optimization engine inside a classical full-network reoptimization loop, started from the Nearest Neighbour tour (phase2/hybrid.py).\nNeither solver optimizes energy loss, loss percentage or cost.\n\nThe transmission electrical parameters (Voltage_kV, Capacity_MW, Loss_Percent, Energy_Loss_MW) allow the routes the solvers produce to be EVALUATED for their energy implications after the fact. That evaluation is what the API's `energy` block reports.\n\nAn energy-aware optimization objective would require explicitly incorporating energy-loss terms into the optimization cost. That is not what the current implementation does.\n\nCONSEQUENCE, stated so it is not misread: a route that is N km shorter is NOT thereby N km 'less energy loss'. Distance optimization and energy-loss evaluation are separate. A shorter route can cross lossier lines and carry MORE modeled loss than a longer one. The only way to compare two routes on loss is to sum Energy_Loss_MW over the distinct lines each route actually uses, which is what the energy analysis does.\n\nEnergy_Loss_MW is summed once per distinct line used, not once per traversal: it is a property of the line, and a line dissipates it continuously while energised.\n\nHOW THE HYBRID QAOA APPROACH WORKS, at the level the code implements:\n  1. The classical Nearest Neighbour tour over the full network is the starting point.\n  2. A sliding window of W consecutive stations on that tour is taken as a subproblem. The cost matrix for those stations comes from the network's own travel costs - nothing is fabricated.\n  3. The subproblem is written as a TSP QUBO with position encoding x[i][t] and the window start pinned to position 0, giving (W-1)^2 binary variables; 'exactly one' constraints enter as squared penalties. The QUBO is mapped to an Ising Hamiltonian (SparsePauliOp of Z and ZZ terms) and handed to QAOA, whose 2p angles are optimized by COBYLA against a CVaR objective.\n  4. Sampled bitstrings are decoded, every valid sub-tour is scored, and the reordering is accepted only if it shortens the full tour.\n  5. Sweeps repeat until no window improves or the sweep cap is hit.\nQAOA is approximate throughout. The project makes no optimality claim and no quantum-advantage claim.",
+      "metadata": {
+        "objective": "route distance (Distance_km)"
+      }
+    },
+    {
+      "id": "reference:tariff",
+      "kind": "doc",
+      "title": "KERC tariff basis and the monetary-loss calculation",
+      "locator": "energy_cost/tariff.py (rate verified against the KERC order)",
+      "text": "TARIFF AND MONETARY-LOSS BASIS (approved project reference).\nRate: Rs. 6.60 per kWh (660 paise/kWh).\nCategory: HT-2(a) - Industries including MSME\nComponent: Energy Charges (per kWh) only\n\nCALCULATION, exactly as this project defines it:\n  Loss_Cost_Per_Hour_INR = Energy_Loss_MW x 1000 x 6.60\n  Loss_Cost_Per_Year_INR = Loss_Cost_Per_Hour_INR x 8760\nThe factor 1000 converts MW held for one hour into kWh. These are the definitions of the CSV's own derived columns; quote those columns rather than working the formula yourself.\n\nTHIS IS AN ENERGY CHARGE ONLY. It is the value of the lost energy, not an electricity bill. It excludes:\n  - demand charges (Rs. 345/kVA/month, FY2025-26)\n  - fixed charges\n  - FPPCA (fuel and power purchase cost adjustment)\n  - APR FY2024-25 true-up adjustment ordered 17 April 2026\n  - pension and gratuity surcharge\n  - electricity tax and other statutory levies\n  - Time-of-Day adjustments\n\nThe annual figure assumes the modeled loss is present for all 8760 hours of the year - continuous modeled operation. The dataset carries no load factor, no generation schedule and no outage profile, so the annual value is an estimate of what a year at this constant loss would be worth. It must never be presented as an actual annual bill or an actual annual loss.\n\nA figure of Rs. 3.00/kWh has circulated as the March 2025 KERC HT industrial energy charge. This project checked it against the order and did not adopt it: the FY2025-26 HT-2(a) energy charge in Annexure-9 is 660 paise/kWh, and Rs. 3.00/kWh is not used anywhere in this project. Every rupee figure in the dataset and in the API is computed at Rs. 6.60/kWh.\n\nPROVENANCE (least critical if this record is shortened):\n  Order: Combined Tariff Order 2025 of BESCOM / MESCOM / CESC / HESCOM / GESCOM (Annual Performance Review FY24; ARR and Retail Supply Tariff for FY2025-26 to FY2027-28)\n  Authority: Karnataka Electricity Regulatory Commission (KERC)\n  Order date: 2025-03-27\n  Effective period: FY2025-26 and FY2026-27 (650 paise/kWh from FY2027-28)\n  Located at: Annexure-9, \"TARIFF SCHEDULE HT-2(a)\", order page 550\n  Source URL: https://kerc.karnataka.gov.in/uploads/96731743148968.pdf\n  Source last checked: 2026-09-10\n  Note recorded in the project: Energy charge only. This is the value of the lost energy, not an electricity bill. The rate is unchanged by the KERC corrigendum of 26 May 2025, which touched the LT-4a subsidy tables and the Discounted Energy Rate Scheme, not the HT-2(a) schedule.",
+      "metadata": {
+        "inr_per_kwh": 6.6,
+        "hours_per_year": 8760
+      }
+    },
+    {
+      "id": "line:belagavi-substation--supa-dam-power-house",
+      "kind": "dataset",
+      "title": "Transmission line: Belagavi Substation -> Supa Dam Power House",
+      "locator": "transmition_lines.csv.csv row 2",
+      "text": "TRANSMISSION LINE (dataset record): Belagavi Substation -> Supa Dam Power House\nCSV row 2 of transmition_lines.csv.csv.\nSource station: Belagavi Substation\nDestination station: Supa Dam Power House\nType (facility type of the source station): substation\nDistance_km: 101.933 km\nVoltage_kV: 110 kV\nCapacity_MW: 1,353.809 MW\nLoss_Percent: 2.243 %\nEnergy_Loss_MW: 30.366 MW\nLoss_Cost_Per_Hour_INR: 200,415.6 INR per hour\nLoss_Cost_Per_Year_INR: 1,755,640,656 INR per year",
+      "metadata": {
+        "source": "Belagavi Substation",
+        "destination": "Supa Dam Power House",
+        "csv_row": 2,
+        "distance_km": 101.933,
+        "energy_loss_mw": 30.366,
+        "loss_cost_per_hour_inr": 200415.6,
+        "loss_cost_per_year_inr": 1755640656.0
+      }
+    },
+    {
+      "id": "line:bellary-thermal-power-station--chitradurga-wind-cluster",
+      "kind": "dataset",
+      "title": "Transmission line: Bellary Thermal Power Station -> Chitradurga Wind Cluster",
+      "locator": "transmition_lines.csv.csv row 3",
+      "text": "TRANSMISSION LINE (dataset record): Bellary Thermal Power Station -> Chitradurga Wind Cluster\nCSV row 3 of transmition_lines.csv.csv.\nSource station: Bellary Thermal Power Station\nDestination station: Chitradurga Wind Cluster\nType (facility type of the source station): thermal\nDistance_km: 113.549 km\nVoltage_kV: 66 kV\nCapacity_MW: 1,700 MW\nLoss_Percent: 2.498 %\nEnergy_Loss_MW: 42.466 MW\nLoss_Cost_Per_Hour_INR: 280,275.6 INR per hour\nLoss_Cost_Per_Year_INR: 2,455,214,256 INR per year",
+      "metadata": {
+        "source": "Bellary Thermal Power Station",
+        "destination": "Chitradurga Wind Cluster",
+        "csv_row": 3,
+        "distance_km": 113.549,
+        "energy_loss_mw": 42.466,
+        "loss_cost_per_hour_inr": 280275.6,
+        "loss_cost_per_year_inr": 2455214256.0
+      }
+    },
+    {
+      "id": "line:bellary-thermal-power-station--pavagada-solar-park--shakti-sthala",
+      "kind": "dataset",
+      "title": "Transmission line: Bellary Thermal Power Station -> Pavagada Solar Park (Shakti Sthala)",
+      "locator": "transmition_lines.csv.csv row 4",
+      "text": "TRANSMISSION LINE (dataset record): Bellary Thermal Power Station -> Pavagada Solar Park (Shakti Sthala)\nCSV row 4 of transmition_lines.csv.csv.\nSource station: Bellary Thermal Power Station\nDestination station: Pavagada Solar Park (Shakti Sthala)\nType (facility type of the source station): thermal\nDistance_km: 123.81 km\nVoltage_kV: 220 kV\nCapacity_MW: 1,700 MW\nLoss_Percent: 2.724 %\nEnergy_Loss_MW: 46.308 MW\nLoss_Cost_Per_Hour_INR: 305,632.8 INR per hour\nLoss_Cost_Per_Year_INR: 2,677,343,328 INR per year",
+      "metadata": {
+        "source": "Bellary Thermal Power Station",
+        "destination": "Pavagada Solar Park (Shakti Sthala)",
+        "csv_row": 4,
+        "distance_km": 123.81,
+        "energy_loss_mw": 46.308,
+        "loss_cost_per_hour_inr": 305632.8,
+        "loss_cost_per_year_inr": 2677343328.0
+      }
+    },
+    {
+      "id": "line:bengaluru--kadabagere-hoody--substation--mysuru-substation",
+      "kind": "dataset",
+      "title": "Transmission line: Bengaluru (Kadabagere/Hoody) Substation -> Mysuru Substation",
+      "locator": "transmition_lines.csv.csv row 5",
+      "text": "TRANSMISSION LINE (dataset record): Bengaluru (Kadabagere/Hoody) Substation -> Mysuru Substation\nCSV row 5 of transmition_lines.csv.csv.\nSource station: Bengaluru (Kadabagere/Hoody) Substation\nDestination station: Mysuru Substation\nType (facility type of the source station): substation\nDistance_km: 128.017 km\nVoltage_kV: 220 kV\nCapacity_MW: 810.983 MW\nLoss_Percent: 2.816 %\nEnergy_Loss_MW: 22.837 MW\nLoss_Cost_Per_Hour_INR: 150,724.2 INR per hour\nLoss_Cost_Per_Year_INR: 1,320,343,992 INR per year",
+      "metadata": {
+        "source": "Bengaluru (Kadabagere/Hoody) Substation",
+        "destination": "Mysuru Substation",
+        "csv_row": 5,
+        "distance_km": 128.017,
+        "energy_loss_mw": 22.837,
+        "loss_cost_per_hour_inr": 150724.2,
+        "loss_cost_per_year_inr": 1320343992.0
+      }
+    },
+    {
+      "id": "line:chitradurga-wind-cluster--davangere-substation",
+      "kind": "dataset",
+      "title": "Transmission line: Chitradurga Wind Cluster -> Davangere Substation",
+      "locator": "transmition_lines.csv.csv row 6",
+      "text": "TRANSMISSION LINE (dataset record): Chitradurga Wind Cluster -> Davangere Substation\nCSV row 6 of transmition_lines.csv.csv.\nSource station: Chitradurga Wind Cluster\nDestination station: Davangere Substation\nType (facility type of the source station): wind\nDistance_km: 57.733 km\nVoltage_kV: 66 kV\nCapacity_MW: 550 MW\nLoss_Percent: 1.27 %\nEnergy_Loss_MW: 6.985 MW\nLoss_Cost_Per_Hour_INR: 46,101 INR per hour\nLoss_Cost_Per_Year_INR: 403,844,760 INR per year",
+      "metadata": {
+        "source": "Chitradurga Wind Cluster",
+        "destination": "Davangere Substation",
+        "csv_row": 6,
+        "distance_km": 57.733,
+        "energy_loss_mw": 6.985,
+        "loss_cost_per_hour_inr": 46101.0,
+        "loss_cost_per_year_inr": 403844760.0
+      }
+    },
+    {
+      "id": "line:chitradurga-wind-cluster--pavagada-solar-park--shakti-sthala",
+      "kind": "dataset",
+      "title": "Transmission line: Chitradurga Wind Cluster -> Pavagada Solar Park (Shakti Sthala)",
+      "locator": "transmition_lines.csv.csv row 7",
+      "text": "TRANSMISSION LINE (dataset record): Chitradurga Wind Cluster -> Pavagada Solar Park (Shakti Sthala)\nCSV row 7 of transmition_lines.csv.csv.\nSource station: Chitradurga Wind Cluster\nDestination station: Pavagada Solar Park (Shakti Sthala)\nType (facility type of the source station): wind\nDistance_km: 95.971 km\nVoltage_kV: 66 kV\nCapacity_MW: 550 MW\nLoss_Percent: 2.111 %\nEnergy_Loss_MW: 11.611 MW\nLoss_Cost_Per_Hour_INR: 76,632.6 INR per hour\nLoss_Cost_Per_Year_INR: 671,301,576 INR per year",
+      "metadata": {
+        "source": "Chitradurga Wind Cluster",
+        "destination": "Pavagada Solar Park (Shakti Sthala)",
+        "csv_row": 7,
+        "distance_km": 95.971,
+        "energy_loss_mw": 11.611,
+        "loss_cost_per_hour_inr": 76632.6,
+        "loss_cost_per_year_inr": 671301576.0
+      }
+    },
+    {
+      "id": "line:chitradurga-wind-cluster--shivamogga-substation",
+      "kind": "dataset",
+      "title": "Transmission line: Chitradurga Wind Cluster -> Shivamogga Substation",
+      "locator": "transmition_lines.csv.csv row 8",
+      "text": "TRANSMISSION LINE (dataset record): Chitradurga Wind Cluster -> Shivamogga Substation\nCSV row 8 of transmition_lines.csv.csv.\nSource station: Chitradurga Wind Cluster\nDestination station: Shivamogga Substation\nType (facility type of the source station): wind\nDistance_km: 95.728 km\nVoltage_kV: 66 kV\nCapacity_MW: 550 MW\nLoss_Percent: 2.106 %\nEnergy_Loss_MW: 11.583 MW\nLoss_Cost_Per_Hour_INR: 76,447.8 INR per hour\nLoss_Cost_Per_Year_INR: 669,682,728 INR per year",
+      "metadata": {
+        "source": "Chitradurga Wind Cluster",
+        "destination": "Shivamogga Substation",
+        "csv_row": 8,
+        "distance_km": 95.728,
+        "energy_loss_mw": 11.583,
+        "loss_cost_per_hour_inr": 76447.8,
+        "loss_cost_per_year_inr": 669682728.0
+      }
+    },
+    {
+      "id": "line:davangere-substation--gadag-wind-solar-hybrid-cluster",
+      "kind": "dataset",
+      "title": "Transmission line: Davangere Substation -> Gadag Wind-Solar Hybrid Cluster",
+      "locator": "transmition_lines.csv.csv row 9",
+      "text": "TRANSMISSION LINE (dataset record): Davangere Substation -> Gadag Wind-Solar Hybrid Cluster\nCSV row 9 of transmition_lines.csv.csv.\nSource station: Davangere Substation\nDestination station: Gadag Wind-Solar Hybrid Cluster\nType (facility type of the source station): substation\nDistance_km: 66.336 km\nVoltage_kV: 66 kV\nCapacity_MW: 1,490.929 MW\nLoss_Percent: 1.459 %\nEnergy_Loss_MW: 21.753 MW\nLoss_Cost_Per_Hour_INR: 143,569.8 INR per hour\nLoss_Cost_Per_Year_INR: 1,257,671,448 INR per year",
+      "metadata": {
+        "source": "Davangere Substation",
+        "destination": "Gadag Wind-Solar Hybrid Cluster",
+        "csv_row": 9,
+        "distance_km": 66.336,
+        "energy_loss_mw": 21.753,
+        "loss_cost_per_hour_inr": 143569.8,
+        "loss_cost_per_year_inr": 1257671448.0
+      }
+    },
+    {
+      "id": "line:davangere-substation--shivamogga-substation",
+      "kind": "dataset",
+      "title": "Transmission line: Davangere Substation -> Shivamogga Substation",
+      "locator": "transmition_lines.csv.csv row 10",
+      "text": "TRANSMISSION LINE (dataset record): Davangere Substation -> Shivamogga Substation\nCSV row 10 of transmition_lines.csv.csv.\nSource station: Davangere Substation\nDestination station: Shivamogga Substation\nType (facility type of the source station): substation\nDistance_km: 70.613 km\nVoltage_kV: 220 kV\nCapacity_MW: 1,229.736 MW\nLoss_Percent: 1.553 %\nEnergy_Loss_MW: 19.098 MW\nLoss_Cost_Per_Hour_INR: 126,046.8 INR per hour\nLoss_Cost_Per_Year_INR: 1,104,169,968 INR per year",
+      "metadata": {
+        "source": "Davangere Substation",
+        "destination": "Shivamogga Substation",
+        "csv_row": 10,
+        "distance_km": 70.613,
+        "energy_loss_mw": 19.098,
+        "loss_cost_per_hour_inr": 126046.8,
+        "loss_cost_per_year_inr": 1104169968.0
+      }
+    },
+    {
+      "id": "line:gadag-wind-solar-hybrid-cluster--kappatagudda-wind-cluster",
+      "kind": "dataset",
+      "title": "Transmission line: Gadag Wind-Solar Hybrid Cluster -> Kappatagudda Wind Cluster",
+      "locator": "transmition_lines.csv.csv row 11",
+      "text": "TRANSMISSION LINE (dataset record): Gadag Wind-Solar Hybrid Cluster -> Kappatagudda Wind Cluster\nCSV row 11 of transmition_lines.csv.csv.\nSource station: Gadag Wind-Solar Hybrid Cluster\nDestination station: Kappatagudda Wind Cluster\nType (facility type of the source station): wind\nDistance_km: 40.088 km\nVoltage_kV: 66 kV\nCapacity_MW: 300 MW\nLoss_Percent: 0.882 %\nEnergy_Loss_MW: 2.646 MW\nLoss_Cost_Per_Hour_INR: 17,463.6 INR per hour\nLoss_Cost_Per_Year_INR: 152,981,136 INR per year",
+      "metadata": {
+        "source": "Gadag Wind-Solar Hybrid Cluster",
+        "destination": "Kappatagudda Wind Cluster",
+        "csv_row": 11,
+        "distance_km": 40.088,
+        "energy_loss_mw": 2.646,
+        "loss_cost_per_hour_inr": 17463.6,
+        "loss_cost_per_year_inr": 152981136.0
+      }
+    },
+    {
+      "id": "line:gerusoppa-power-house--sharavathy-generating-station",
+      "kind": "dataset",
+      "title": "Transmission line: Gerusoppa Power House -> Sharavathy Generating Station",
+      "locator": "transmition_lines.csv.csv row 12",
+      "text": "TRANSMISSION LINE (dataset record): Gerusoppa Power House -> Sharavathy Generating Station\nCSV row 12 of transmition_lines.csv.csv.\nSource station: Gerusoppa Power House\nDestination station: Sharavathy Generating Station\nType (facility type of the source station): hydro\nDistance_km: 15.412 km\nVoltage_kV: 220 kV\nCapacity_MW: 240 MW\nLoss_Percent: 0.339 %\nEnergy_Loss_MW: 0.814 MW\nLoss_Cost_Per_Hour_INR: 5,372.4 INR per hour\nLoss_Cost_Per_Year_INR: 47,062,224 INR per year",
+      "metadata": {
+        "source": "Gerusoppa Power House",
+        "destination": "Sharavathy Generating Station",
+        "csv_row": 12,
+        "distance_km": 15.412,
+        "energy_loss_mw": 0.814,
+        "loss_cost_per_hour_inr": 5372.4,
+        "loss_cost_per_year_inr": 47062224.0
+      }
+    },
+    {
+      "id": "line:hassan-substation--mysuru-substation",
+      "kind": "dataset",
+      "title": "Transmission line: Hassan Substation -> Mysuru Substation",
+      "locator": "transmition_lines.csv.csv row 13",
+      "text": "TRANSMISSION LINE (dataset record): Hassan Substation -> Mysuru Substation\nCSV row 13 of transmition_lines.csv.csv.\nSource station: Hassan Substation\nDestination station: Mysuru Substation\nType (facility type of the source station): substation\nDistance_km: 98.373 km\nVoltage_kV: 220 kV\nCapacity_MW: 252.567 MW\nLoss_Percent: 2.164 %\nEnergy_Loss_MW: 5.466 MW\nLoss_Cost_Per_Hour_INR: 36,075.6 INR per hour\nLoss_Cost_Per_Year_INR: 316,022,256 INR per year",
+      "metadata": {
+        "source": "Hassan Substation",
+        "destination": "Mysuru Substation",
+        "csv_row": 13,
+        "distance_km": 98.373,
+        "energy_loss_mw": 5.466,
+        "loss_cost_per_hour_inr": 36075.6,
+        "loss_cost_per_year_inr": 316022256.0
+      }
+    },
+    {
+      "id": "line:hubballi-dharwad-substation--belagavi-substation",
+      "kind": "dataset",
+      "title": "Transmission line: Hubballi-Dharwad Substation -> Belagavi Substation",
+      "locator": "transmition_lines.csv.csv row 14",
+      "text": "TRANSMISSION LINE (dataset record): Hubballi-Dharwad Substation -> Belagavi Substation\nCSV row 14 of transmition_lines.csv.csv.\nSource station: Hubballi-Dharwad Substation\nDestination station: Belagavi Substation\nType (facility type of the source station): substation\nDistance_km: 86.065 km\nVoltage_kV: 220 kV\nCapacity_MW: 1,680.508 MW\nLoss_Percent: 1.893 %\nEnergy_Loss_MW: 31.812 MW\nLoss_Cost_Per_Hour_INR: 209,959.2 INR per hour\nLoss_Cost_Per_Year_INR: 1,839,242,592 INR per year",
+      "metadata": {
+        "source": "Hubballi-Dharwad Substation",
+        "destination": "Belagavi Substation",
+        "csv_row": 14,
+        "distance_km": 86.065,
+        "energy_loss_mw": 31.812,
+        "loss_cost_per_hour_inr": 209959.2,
+        "loss_cost_per_year_inr": 1839242592.0
+      }
+    },
+    {
+      "id": "line:hubballi-dharwad-substation--supa-dam-power-house",
+      "kind": "dataset",
+      "title": "Transmission line: Hubballi-Dharwad Substation -> Supa Dam Power House",
+      "locator": "transmition_lines.csv.csv row 15",
+      "text": "TRANSMISSION LINE (dataset record): Hubballi-Dharwad Substation -> Supa Dam Power House\nCSV row 15 of transmition_lines.csv.csv.\nSource station: Hubballi-Dharwad Substation\nDestination station: Supa Dam Power House\nType (facility type of the source station): substation\nDistance_km: 66.311 km\nVoltage_kV: 110 kV\nCapacity_MW: 1,333.046 MW\nLoss_Percent: 1.459 %\nEnergy_Loss_MW: 19.449 MW\nLoss_Cost_Per_Hour_INR: 128,363.4 INR per hour\nLoss_Cost_Per_Year_INR: 1,124,463,384 INR per year",
+      "metadata": {
+        "source": "Hubballi-Dharwad Substation",
+        "destination": "Supa Dam Power House",
+        "csv_row": 15,
+        "distance_km": 66.311,
+        "energy_loss_mw": 19.449,
+        "loss_cost_per_hour_inr": 128363.4,
+        "loss_cost_per_year_inr": 1124463384.0
+      }
+    },
+    {
+      "id": "line:kadra-power-house--gerusoppa-power-house",
+      "kind": "dataset",
+      "title": "Transmission line: Kadra Power House -> Gerusoppa Power House",
+      "locator": "transmition_lines.csv.csv row 16",
+      "text": "TRANSMISSION LINE (dataset record): Kadra Power House -> Gerusoppa Power House\nCSV row 16 of transmition_lines.csv.csv.\nSource station: Kadra Power House\nDestination station: Gerusoppa Power House\nType (facility type of the source station): hydro\nDistance_km: 67.843 km\nVoltage_kV: 110 kV\nCapacity_MW: 150 MW\nLoss_Percent: 1.493 %\nEnergy_Loss_MW: 2.24 MW\nLoss_Cost_Per_Hour_INR: 14,784 INR per hour\nLoss_Cost_Per_Year_INR: 129,507,840 INR per year",
+      "metadata": {
+        "source": "Kadra Power House",
+        "destination": "Gerusoppa Power House",
+        "csv_row": 16,
+        "distance_km": 67.843,
+        "energy_loss_mw": 2.24,
+        "loss_cost_per_hour_inr": 14784.0,
+        "loss_cost_per_year_inr": 129507840.0
+      }
+    },
+    {
+      "id": "line:kadra-power-house--kaiga-nuclear-power-station",
+      "kind": "dataset",
+      "title": "Transmission line: Kadra Power House -> Kaiga Nuclear Power Station",
+      "locator": "transmition_lines.csv.csv row 17",
+      "text": "TRANSMISSION LINE (dataset record): Kadra Power House -> Kaiga Nuclear Power Station\nCSV row 17 of transmition_lines.csv.csv.\nSource station: Kadra Power House\nDestination station: Kaiga Nuclear Power Station\nType (facility type of the source station): hydro\nDistance_km: 11.275 km\nVoltage_kV: 110 kV\nCapacity_MW: 150 MW\nLoss_Percent: 0.248 %\nEnergy_Loss_MW: 0.372 MW\nLoss_Cost_Per_Hour_INR: 2,455.2 INR per hour\nLoss_Cost_Per_Year_INR: 21,507,552 INR per year",
+      "metadata": {
+        "source": "Kadra Power House",
+        "destination": "Kaiga Nuclear Power Station",
+        "csv_row": 17,
+        "distance_km": 11.275,
+        "energy_loss_mw": 0.372,
+        "loss_cost_per_hour_inr": 2455.2,
+        "loss_cost_per_year_inr": 21507552.0
+      }
+    },
+    {
+      "id": "line:kaiga-nuclear-power-station--kodasalli-power-house",
+      "kind": "dataset",
+      "title": "Transmission line: Kaiga Nuclear Power Station -> Kodasalli Power House",
+      "locator": "transmition_lines.csv.csv row 18",
+      "text": "TRANSMISSION LINE (dataset record): Kaiga Nuclear Power Station -> Kodasalli Power House\nCSV row 18 of transmition_lines.csv.csv.\nSource station: Kaiga Nuclear Power Station\nDestination station: Kodasalli Power House\nType (facility type of the source station): nuclear\nDistance_km: 12.594 km\nVoltage_kV: 110 kV\nCapacity_MW: 880 MW\nLoss_Percent: 0.277 %\nEnergy_Loss_MW: 2.438 MW\nLoss_Cost_Per_Hour_INR: 16,090.8 INR per hour\nLoss_Cost_Per_Year_INR: 140,955,408 INR per year",
+      "metadata": {
+        "source": "Kaiga Nuclear Power Station",
+        "destination": "Kodasalli Power House",
+        "csv_row": 18,
+        "distance_km": 12.594,
+        "energy_loss_mw": 2.438,
+        "loss_cost_per_hour_inr": 16090.8,
+        "loss_cost_per_year_inr": 140955408.0
+      }
+    },
+    {
+      "id": "line:kalaburagi-substation--yermarus-thermal-power-station",
+      "kind": "dataset",
+      "title": "Transmission line: Kalaburagi Substation -> Yermarus Thermal Power Station",
+      "locator": "transmition_lines.csv.csv row 19",
+      "text": "TRANSMISSION LINE (dataset record): Kalaburagi Substation -> Yermarus Thermal Power Station\nCSV row 19 of transmition_lines.csv.csv.\nSource station: Kalaburagi Substation\nDestination station: Yermarus Thermal Power Station\nType (facility type of the source station): substation\nDistance_km: 141.886 km\nVoltage_kV: 220 kV\nCapacity_MW: 1,373.424 MW\nLoss_Percent: 3.121 %\nEnergy_Loss_MW: 42.865 MW\nLoss_Cost_Per_Hour_INR: 282,909 INR per hour\nLoss_Cost_Per_Year_INR: 2,478,282,840 INR per year",
+      "metadata": {
+        "source": "Kalaburagi Substation",
+        "destination": "Yermarus Thermal Power Station",
+        "csv_row": 19,
+        "distance_km": 141.886,
+        "energy_loss_mw": 42.865,
+        "loss_cost_per_hour_inr": 282909.0,
+        "loss_cost_per_year_inr": 2478282840.0
+      }
+    },
+    {
+      "id": "line:kappatagudda-wind-cluster--hubballi-dharwad-substation",
+      "kind": "dataset",
+      "title": "Transmission line: Kappatagudda Wind Cluster -> Hubballi-Dharwad Substation",
+      "locator": "transmition_lines.csv.csv row 20",
+      "text": "TRANSMISSION LINE (dataset record): Kappatagudda Wind Cluster -> Hubballi-Dharwad Substation\nCSV row 20 of transmition_lines.csv.csv.\nSource station: Kappatagudda Wind Cluster\nDestination station: Hubballi-Dharwad Substation\nType (facility type of the source station): wind\nDistance_km: 56.424 km\nVoltage_kV: 66 kV\nCapacity_MW: 250 MW\nLoss_Percent: 1.241 %\nEnergy_Loss_MW: 3.103 MW\nLoss_Cost_Per_Hour_INR: 20,479.8 INR per hour\nLoss_Cost_Per_Year_INR: 179,403,048 INR per year",
+      "metadata": {
+        "source": "Kappatagudda Wind Cluster",
+        "destination": "Hubballi-Dharwad Substation",
+        "csv_row": 20,
+        "distance_km": 56.424,
+        "energy_loss_mw": 3.103,
+        "loss_cost_per_hour_inr": 20479.8,
+        "loss_cost_per_year_inr": 179403048.0
+      }
+    },
+    {
+      "id": "line:kodasalli-power-house--kadra-power-house",
+      "kind": "dataset",
+      "title": "Transmission line: Kodasalli Power House -> Kadra Power House",
+      "locator": "transmition_lines.csv.csv row 21",
+      "text": "TRANSMISSION LINE (dataset record): Kodasalli Power House -> Kadra Power House\nCSV row 21 of transmition_lines.csv.csv.\nSource station: Kodasalli Power House\nDestination station: Kadra Power House\nType (facility type of the source station): hydro\nDistance_km: 6.225 km\nVoltage_kV: 110 kV\nCapacity_MW: 120 MW\nLoss_Percent: 0.137 %\nEnergy_Loss_MW: 0.164 MW\nLoss_Cost_Per_Hour_INR: 1,082.4 INR per hour\nLoss_Cost_Per_Year_INR: 9,481,824 INR per year",
+      "metadata": {
+        "source": "Kodasalli Power House",
+        "destination": "Kadra Power House",
+        "csv_row": 21,
+        "distance_km": 6.225,
+        "energy_loss_mw": 0.164,
+        "loss_cost_per_hour_inr": 1082.4,
+        "loss_cost_per_year_inr": 9481824.0
+      }
+    },
+    {
+      "id": "line:linganamakki-dam-power-house--gerusoppa-power-house",
+      "kind": "dataset",
+      "title": "Transmission line: Linganamakki Dam Power House -> Gerusoppa Power House",
+      "locator": "transmition_lines.csv.csv row 22",
+      "text": "TRANSMISSION LINE (dataset record): Linganamakki Dam Power House -> Gerusoppa Power House\nCSV row 22 of transmition_lines.csv.csv.\nSource station: Linganamakki Dam Power House\nDestination station: Gerusoppa Power House\nType (facility type of the source station): hydro\nDistance_km: 19.511 km\nVoltage_kV: 66 kV\nCapacity_MW: 55 MW\nLoss_Percent: 0.429 %\nEnergy_Loss_MW: 0.236 MW\nLoss_Cost_Per_Hour_INR: 1,557.6 INR per hour\nLoss_Cost_Per_Year_INR: 13,644,576 INR per year",
+      "metadata": {
+        "source": "Linganamakki Dam Power House",
+        "destination": "Gerusoppa Power House",
+        "csv_row": 22,
+        "distance_km": 19.511,
+        "energy_loss_mw": 0.236,
+        "loss_cost_per_hour_inr": 1557.6,
+        "loss_cost_per_year_inr": 13644576.0
+      }
+    },
+    {
+      "id": "line:linganamakki-dam-power-house--varahi-underground-power-house",
+      "kind": "dataset",
+      "title": "Transmission line: Linganamakki Dam Power House -> Varahi Underground Power House",
+      "locator": "transmition_lines.csv.csv row 23",
+      "text": "TRANSMISSION LINE (dataset record): Linganamakki Dam Power House -> Varahi Underground Power House\nCSV row 23 of transmition_lines.csv.csv.\nSource station: Linganamakki Dam Power House\nDestination station: Varahi Underground Power House\nType (facility type of the source station): hydro\nDistance_km: 73.188 km\nVoltage_kV: 66 kV\nCapacity_MW: 55 MW\nLoss_Percent: 1.61 %\nEnergy_Loss_MW: 0.886 MW\nLoss_Cost_Per_Hour_INR: 5,847.6 INR per hour\nLoss_Cost_Per_Year_INR: 51,224,976 INR per year",
+      "metadata": {
+        "source": "Linganamakki Dam Power House",
+        "destination": "Varahi Underground Power House",
+        "csv_row": 23,
+        "distance_km": 73.188,
+        "energy_loss_mw": 0.886,
+        "loss_cost_per_hour_inr": 5847.6,
+        "loss_cost_per_year_inr": 51224976.0
+      }
+    },
+    {
+      "id": "line:mangaluru-substation--hassan-substation",
+      "kind": "dataset",
+      "title": "Transmission line: Mangaluru Substation -> Hassan Substation",
+      "locator": "transmition_lines.csv.csv row 24",
+      "text": "TRANSMISSION LINE (dataset record): Mangaluru Substation -> Hassan Substation\nCSV row 24 of transmition_lines.csv.csv.\nSource station: Mangaluru Substation\nDestination station: Hassan Substation\nType (facility type of the source station): substation\nDistance_km: 135.243 km\nVoltage_kV: 220 kV\nCapacity_MW: 307.544 MW\nLoss_Percent: 2.975 %\nEnergy_Loss_MW: 9.149 MW\nLoss_Cost_Per_Hour_INR: 60,383.4 INR per hour\nLoss_Cost_Per_Year_INR: 528,958,584 INR per year",
+      "metadata": {
+        "source": "Mangaluru Substation",
+        "destination": "Hassan Substation",
+        "csv_row": 24,
+        "distance_km": 135.243,
+        "energy_loss_mw": 9.149,
+        "loss_cost_per_hour_inr": 60383.4,
+        "loss_cost_per_year_inr": 528958584.0
+      }
+    },
+    {
+      "id": "line:mysuru-substation--tumakuru-substation",
+      "kind": "dataset",
+      "title": "Transmission line: Mysuru Substation -> Tumakuru Substation",
+      "locator": "transmition_lines.csv.csv row 25",
+      "text": "TRANSMISSION LINE (dataset record): Mysuru Substation -> Tumakuru Substation\nCSV row 25 of transmition_lines.csv.csv.\nSource station: Mysuru Substation\nDestination station: Tumakuru Substation\nType (facility type of the source station): substation\nDistance_km: 126.934 km\nVoltage_kV: 220 kV\nCapacity_MW: 829.625 MW\nLoss_Percent: 2.793 %\nEnergy_Loss_MW: 23.171 MW\nLoss_Cost_Per_Hour_INR: 152,928.6 INR per hour\nLoss_Cost_Per_Year_INR: 1,339,654,536 INR per year",
+      "metadata": {
+        "source": "Mysuru Substation",
+        "destination": "Tumakuru Substation",
+        "csv_row": 25,
+        "distance_km": 126.934,
+        "energy_loss_mw": 23.171,
+        "loss_cost_per_hour_inr": 152928.6,
+        "loss_cost_per_year_inr": 1339654536.0
+      }
+    },
+    {
+      "id": "line:nagjhari-power-house--kadra-power-house",
+      "kind": "dataset",
+      "title": "Transmission line: Nagjhari Power House -> Kadra Power House",
+      "locator": "transmition_lines.csv.csv row 26",
+      "text": "TRANSMISSION LINE (dataset record): Nagjhari Power House -> Kadra Power House\nCSV row 26 of transmition_lines.csv.csv.\nSource station: Nagjhari Power House\nDestination station: Kadra Power House\nType (facility type of the source station): hydro\nDistance_km: 10.397 km\nVoltage_kV: 110 kV\nCapacity_MW: 900 MW\nLoss_Percent: 0.229 %\nEnergy_Loss_MW: 2.061 MW\nLoss_Cost_Per_Hour_INR: 13,602.6 INR per hour\nLoss_Cost_Per_Year_INR: 119,158,776 INR per year",
+      "metadata": {
+        "source": "Nagjhari Power House",
+        "destination": "Kadra Power House",
+        "csv_row": 26,
+        "distance_km": 10.397,
+        "energy_loss_mw": 2.061,
+        "loss_cost_per_hour_inr": 13602.6,
+        "loss_cost_per_year_inr": 119158776.0
+      }
+    },
+    {
+      "id": "line:nagjhari-power-house--kodasalli-power-house",
+      "kind": "dataset",
+      "title": "Transmission line: Nagjhari Power House -> Kodasalli Power House",
+      "locator": "transmition_lines.csv.csv row 27",
+      "text": "TRANSMISSION LINE (dataset record): Nagjhari Power House -> Kodasalli Power House\nCSV row 27 of transmition_lines.csv.csv.\nSource station: Nagjhari Power House\nDestination station: Kodasalli Power House\nType (facility type of the source station): hydro\nDistance_km: 5.379 km\nVoltage_kV: 110 kV\nCapacity_MW: 900 MW\nLoss_Percent: 0.118 %\nEnergy_Loss_MW: 1.062 MW\nLoss_Cost_Per_Hour_INR: 7,009.2 INR per hour\nLoss_Cost_Per_Year_INR: 61,400,592 INR per year",
+      "metadata": {
+        "source": "Nagjhari Power House",
+        "destination": "Kodasalli Power House",
+        "csv_row": 27,
+        "distance_km": 5.379,
+        "energy_loss_mw": 1.062,
+        "loss_cost_per_hour_inr": 7009.2,
+        "loss_cost_per_year_inr": 61400592.0
+      }
+    },
+    {
+      "id": "line:pavagada-solar-park--shakti-sthala--tumakuru-substation",
+      "kind": "dataset",
+      "title": "Transmission line: Pavagada Solar Park (Shakti Sthala) -> Tumakuru Substation",
+      "locator": "transmition_lines.csv.csv row 28",
+      "text": "TRANSMISSION LINE (dataset record): Pavagada Solar Park (Shakti Sthala) -> Tumakuru Substation\nCSV row 28 of transmition_lines.csv.csv.\nSource station: Pavagada Solar Park (Shakti Sthala)\nDestination station: Tumakuru Substation\nType (facility type of the source station): solar\nDistance_km: 86.545 km\nVoltage_kV: 220 kV\nCapacity_MW: 2,050 MW\nLoss_Percent: 1.904 %\nEnergy_Loss_MW: 39.032 MW\nLoss_Cost_Per_Hour_INR: 257,611.2 INR per hour\nLoss_Cost_Per_Year_INR: 2,256,674,112 INR per year",
+      "metadata": {
+        "source": "Pavagada Solar Park (Shakti Sthala)",
+        "destination": "Tumakuru Substation",
+        "csv_row": 28,
+        "distance_km": 86.545,
+        "energy_loss_mw": 39.032,
+        "loss_cost_per_hour_inr": 257611.2,
+        "loss_cost_per_year_inr": 2256674112.0
+      }
+    },
+    {
+      "id": "line:raichur-thermal-power-station--bellary-thermal-power-station",
+      "kind": "dataset",
+      "title": "Transmission line: Raichur Thermal Power Station -> Bellary Thermal Power Station",
+      "locator": "transmition_lines.csv.csv row 29",
+      "text": "TRANSMISSION LINE (dataset record): Raichur Thermal Power Station -> Bellary Thermal Power Station\nCSV row 29 of transmition_lines.csv.csv.\nSource station: Raichur Thermal Power Station\nDestination station: Bellary Thermal Power Station\nType (facility type of the source station): thermal\nDistance_km: 131.24 km\nVoltage_kV: 220 kV\nCapacity_MW: 1,720 MW\nLoss_Percent: 2.887 %\nEnergy_Loss_MW: 49.656 MW\nLoss_Cost_Per_Hour_INR: 327,729.6 INR per hour\nLoss_Cost_Per_Year_INR: 2,870,911,296 INR per year",
+      "metadata": {
+        "source": "Raichur Thermal Power Station",
+        "destination": "Bellary Thermal Power Station",
+        "csv_row": 29,
+        "distance_km": 131.24,
+        "energy_loss_mw": 49.656,
+        "loss_cost_per_hour_inr": 327729.6,
+        "loss_cost_per_year_inr": 2870911296.0
+      }
+    },
+    {
+      "id": "line:raichur-thermal-power-station--kalaburagi-substation",
+      "kind": "dataset",
+      "title": "Transmission line: Raichur Thermal Power Station -> Kalaburagi Substation",
+      "locator": "transmition_lines.csv.csv row 30",
+      "text": "TRANSMISSION LINE (dataset record): Raichur Thermal Power Station -> Kalaburagi Substation\nCSV row 30 of transmition_lines.csv.csv.\nSource station: Raichur Thermal Power Station\nDestination station: Kalaburagi Substation\nType (facility type of the source station): thermal\nDistance_km: 134.588 km\nVoltage_kV: 220 kV\nCapacity_MW: 1,720 MW\nLoss_Percent: 2.961 %\nEnergy_Loss_MW: 50.929 MW\nLoss_Cost_Per_Hour_INR: 336,131.4 INR per hour\nLoss_Cost_Per_Year_INR: 2,944,511,064 INR per year",
+      "metadata": {
+        "source": "Raichur Thermal Power Station",
+        "destination": "Kalaburagi Substation",
+        "csv_row": 30,
+        "distance_km": 134.588,
+        "energy_loss_mw": 50.929,
+        "loss_cost_per_hour_inr": 336131.4,
+        "loss_cost_per_year_inr": 2944511064.0
+      }
+    },
+    {
+      "id": "line:raichur-thermal-power-station--yermarus-thermal-power-station",
+      "kind": "dataset",
+      "title": "Transmission line: Raichur Thermal Power Station -> Yermarus Thermal Power Station",
+      "locator": "transmition_lines.csv.csv row 31",
+      "text": "TRANSMISSION LINE (dataset record): Raichur Thermal Power Station -> Yermarus Thermal Power Station\nCSV row 31 of transmition_lines.csv.csv.\nSource station: Raichur Thermal Power Station\nDestination station: Yermarus Thermal Power Station\nType (facility type of the source station): thermal\nDistance_km: 9.419 km\nVoltage_kV: 220 kV\nCapacity_MW: 1,720 MW\nLoss_Percent: 0.207 %\nEnergy_Loss_MW: 3.56 MW\nLoss_Cost_Per_Hour_INR: 23,496 INR per hour\nLoss_Cost_Per_Year_INR: 205,824,960 INR per year",
+      "metadata": {
+        "source": "Raichur Thermal Power Station",
+        "destination": "Yermarus Thermal Power Station",
+        "csv_row": 31,
+        "distance_km": 9.419,
+        "energy_loss_mw": 3.56,
+        "loss_cost_per_hour_inr": 23496.0,
+        "loss_cost_per_year_inr": 205824960.0
+      }
+    },
+    {
+      "id": "line:sharavathy-generating-station--linganamakki-dam-power-house",
+      "kind": "dataset",
+      "title": "Transmission line: Sharavathy Generating Station -> Linganamakki Dam Power House",
+      "locator": "transmition_lines.csv.csv row 32",
+      "text": "TRANSMISSION LINE (dataset record): Sharavathy Generating Station -> Linganamakki Dam Power House\nCSV row 32 of transmition_lines.csv.csv.\nSource station: Sharavathy Generating Station\nDestination station: Linganamakki Dam Power House\nType (facility type of the source station): hydro\nDistance_km: 5.013 km\nVoltage_kV: 66 kV\nCapacity_MW: 1,035 MW\nLoss_Percent: 0.11 %\nEnergy_Loss_MW: 1.138 MW\nLoss_Cost_Per_Hour_INR: 7,510.8 INR per hour\nLoss_Cost_Per_Year_INR: 65,794,608 INR per year",
+      "metadata": {
+        "source": "Sharavathy Generating Station",
+        "destination": "Linganamakki Dam Power House",
+        "csv_row": 32,
+        "distance_km": 5.013,
+        "energy_loss_mw": 1.138,
+        "loss_cost_per_hour_inr": 7510.8,
+        "loss_cost_per_year_inr": 65794608.0
+      }
+    },
+    {
+      "id": "line:shivamogga-substation--varahi-underground-power-house",
+      "kind": "dataset",
+      "title": "Transmission line: Shivamogga Substation -> Varahi Underground Power House",
+      "locator": "transmition_lines.csv.csv row 33",
+      "text": "TRANSMISSION LINE (dataset record): Shivamogga Substation -> Varahi Underground Power House\nCSV row 33 of transmition_lines.csv.csv.\nSource station: Shivamogga Substation\nDestination station: Varahi Underground Power House\nType (facility type of the source station): substation\nDistance_km: 80.329 km\nVoltage_kV: 220 kV\nCapacity_MW: 700.693 MW\nLoss_Percent: 1.767 %\nEnergy_Loss_MW: 12.381 MW\nLoss_Cost_Per_Hour_INR: 81,714.6 INR per hour\nLoss_Cost_Per_Year_INR: 715,819,896 INR per year",
+      "metadata": {
+        "source": "Shivamogga Substation",
+        "destination": "Varahi Underground Power House",
+        "csv_row": 33,
+        "distance_km": 80.329,
+        "energy_loss_mw": 12.381,
+        "loss_cost_per_hour_inr": 81714.6,
+        "loss_cost_per_year_inr": 715819896.0
+      }
+    },
+    {
+      "id": "line:supa-dam-power-house--kodasalli-power-house",
+      "kind": "dataset",
+      "title": "Transmission line: Supa Dam Power House -> Kodasalli Power House",
+      "locator": "transmition_lines.csv.csv row 34",
+      "text": "TRANSMISSION LINE (dataset record): Supa Dam Power House -> Kodasalli Power House\nCSV row 34 of transmition_lines.csv.csv.\nSource station: Supa Dam Power House\nDestination station: Kodasalli Power House\nType (facility type of the source station): hydro\nDistance_km: 17.58 km\nVoltage_kV: 110 kV\nCapacity_MW: 100 MW\nLoss_Percent: 0.387 %\nEnergy_Loss_MW: 0.387 MW\nLoss_Cost_Per_Hour_INR: 2,554.2 INR per hour\nLoss_Cost_Per_Year_INR: 22,374,792 INR per year",
+      "metadata": {
+        "source": "Supa Dam Power House",
+        "destination": "Kodasalli Power House",
+        "csv_row": 34,
+        "distance_km": 17.58,
+        "energy_loss_mw": 0.387,
+        "loss_cost_per_hour_inr": 2554.2,
+        "loss_cost_per_year_inr": 22374792.0
+      }
+    },
+    {
+      "id": "line:supa-dam-power-house--nagjhari-power-house",
+      "kind": "dataset",
+      "title": "Transmission line: Supa Dam Power House -> Nagjhari Power House",
+      "locator": "transmition_lines.csv.csv row 35",
+      "text": "TRANSMISSION LINE (dataset record): Supa Dam Power House -> Nagjhari Power House\nCSV row 35 of transmition_lines.csv.csv.\nSource station: Supa Dam Power House\nDestination station: Nagjhari Power House\nType (facility type of the source station): hydro\nDistance_km: 13.733 km\nVoltage_kV: 110 kV\nCapacity_MW: 100 MW\nLoss_Percent: 0.302 %\nEnergy_Loss_MW: 0.302 MW\nLoss_Cost_Per_Hour_INR: 1,993.2 INR per hour\nLoss_Cost_Per_Year_INR: 17,460,432 INR per year",
+      "metadata": {
+        "source": "Supa Dam Power House",
+        "destination": "Nagjhari Power House",
+        "csv_row": 35,
+        "distance_km": 13.733,
+        "energy_loss_mw": 0.302,
+        "loss_cost_per_hour_inr": 1993.2,
+        "loss_cost_per_year_inr": 17460432.0
+      }
+    },
+    {
+      "id": "line:tumakuru-substation--bengaluru--kadabagere-hoody--substation",
+      "kind": "dataset",
+      "title": "Transmission line: Tumakuru Substation -> Bengaluru (Kadabagere/Hoody) Substation",
+      "locator": "transmition_lines.csv.csv row 36",
+      "text": "TRANSMISSION LINE (dataset record): Tumakuru Substation -> Bengaluru (Kadabagere/Hoody) Substation\nCSV row 36 of transmition_lines.csv.csv.\nSource station: Tumakuru Substation\nDestination station: Bengaluru (Kadabagere/Hoody) Substation\nType (facility type of the source station): substation\nDistance_km: 65.802 km\nVoltage_kV: 220 kV\nCapacity_MW: 1,601.359 MW\nLoss_Percent: 1.448 %\nEnergy_Loss_MW: 23.188 MW\nLoss_Cost_Per_Hour_INR: 153,040.8 INR per hour\nLoss_Cost_Per_Year_INR: 1,340,637,408 INR per year",
+      "metadata": {
+        "source": "Tumakuru Substation",
+        "destination": "Bengaluru (Kadabagere/Hoody) Substation",
+        "csv_row": 36,
+        "distance_km": 65.802,
+        "energy_loss_mw": 23.188,
+        "loss_cost_per_hour_inr": 153040.8,
+        "loss_cost_per_year_inr": 1340637408.0
+      }
+    },
+    {
+      "id": "line:tumakuru-substation--hassan-substation",
+      "kind": "dataset",
+      "title": "Transmission line: Tumakuru Substation -> Hassan Substation",
+      "locator": "transmition_lines.csv.csv row 37",
+      "text": "TRANSMISSION LINE (dataset record): Tumakuru Substation -> Hassan Substation\nCSV row 37 of transmition_lines.csv.csv.\nSource station: Tumakuru Substation\nDestination station: Hassan Substation\nType (facility type of the source station): substation\nDistance_km: 116.077 km\nVoltage_kV: 220 kV\nCapacity_MW: 1,143.061 MW\nLoss_Percent: 2.554 %\nEnergy_Loss_MW: 29.194 MW\nLoss_Cost_Per_Hour_INR: 192,680.4 INR per hour\nLoss_Cost_Per_Year_INR: 1,687,880,304 INR per year",
+      "metadata": {
+        "source": "Tumakuru Substation",
+        "destination": "Hassan Substation",
+        "csv_row": 37,
+        "distance_km": 116.077,
+        "energy_loss_mw": 29.194,
+        "loss_cost_per_hour_inr": 192680.4,
+        "loss_cost_per_year_inr": 1687880304.0
+      }
+    },
+    {
+      "id": "line:varahi-underground-power-house--mangaluru-substation",
+      "kind": "dataset",
+      "title": "Transmission line: Varahi Underground Power House -> Mangaluru Substation",
+      "locator": "transmition_lines.csv.csv row 38",
+      "text": "TRANSMISSION LINE (dataset record): Varahi Underground Power House -> Mangaluru Substation\nCSV row 38 of transmition_lines.csv.csv.\nSource station: Varahi Underground Power House\nDestination station: Mangaluru Substation\nType (facility type of the source station): hydro\nDistance_km: 71.64 km\nVoltage_kV: 220 kV\nCapacity_MW: 460 MW\nLoss_Percent: 1.576 %\nEnergy_Loss_MW: 7.25 MW\nLoss_Cost_Per_Hour_INR: 47,850 INR per hour\nLoss_Cost_Per_Year_INR: 419,166,000 INR per year",
+      "metadata": {
+        "source": "Varahi Underground Power House",
+        "destination": "Mangaluru Substation",
+        "csv_row": 38,
+        "distance_km": 71.64,
+        "energy_loss_mw": 7.25,
+        "loss_cost_per_hour_inr": 47850.0,
+        "loss_cost_per_year_inr": 419166000.0
+      }
+    },
+    {
+      "id": "line:yermarus-thermal-power-station--bellary-thermal-power-station",
+      "kind": "dataset",
+      "title": "Transmission line: Yermarus Thermal Power Station -> Bellary Thermal Power Station",
+      "locator": "transmition_lines.csv.csv row 39",
+      "text": "TRANSMISSION LINE (dataset record): Yermarus Thermal Power Station -> Bellary Thermal Power Station\nCSV row 39 of transmition_lines.csv.csv.\nSource station: Yermarus Thermal Power Station\nDestination station: Bellary Thermal Power Station\nType (facility type of the source station): thermal\nDistance_km: 131.248 km\nVoltage_kV: 220 kV\nCapacity_MW: 1,600 MW\nLoss_Percent: 2.887 %\nEnergy_Loss_MW: 46.192 MW\nLoss_Cost_Per_Hour_INR: 304,867.2 INR per hour\nLoss_Cost_Per_Year_INR: 2,670,636,672 INR per year",
+      "metadata": {
+        "source": "Yermarus Thermal Power Station",
+        "destination": "Bellary Thermal Power Station",
+        "csv_row": 39,
+        "distance_km": 131.248,
+        "energy_loss_mw": 46.192,
+        "loss_cost_per_hour_inr": 304867.2,
+        "loss_cost_per_year_inr": 2670636672.0
+      }
+    },
+    {
+      "id": "station:belagavi-substation",
+      "kind": "dataset",
+      "title": "Station: Belagavi Substation",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Belagavi Substation\nType: substation\nLatitude: 15.8497\nLongitude: 74.4977\nTransmission lines meeting here: 2\nDirectly connected stations and the line distance to each:\n  - Belagavi Substation <-> Hubballi-Dharwad Substation: 86.065 km\n  - Belagavi Substation <-> Supa Dam Power House: 101.933 km",
+      "metadata": {
+        "station": "Belagavi Substation",
+        "degree": 2
+      }
+    },
+    {
+      "id": "station:bellary-thermal-power-station",
+      "kind": "dataset",
+      "title": "Station: Bellary Thermal Power Station",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Bellary Thermal Power Station\nType: thermal\nLatitude: 15.1421\nLongitude: 76.8747\nTransmission lines meeting here: 4\nDirectly connected stations and the line distance to each:\n  - Bellary Thermal Power Station <-> Chitradurga Wind Cluster: 113.549 km\n  - Bellary Thermal Power Station <-> Pavagada Solar Park (Shakti Sthala): 123.81 km\n  - Bellary Thermal Power Station <-> Raichur Thermal Power Station: 131.24 km\n  - Bellary Thermal Power Station <-> Yermarus Thermal Power Station: 131.248 km",
+      "metadata": {
+        "station": "Bellary Thermal Power Station",
+        "degree": 4
+      }
+    },
+    {
+      "id": "station:bengaluru--kadabagere-hoody--substation",
+      "kind": "dataset",
+      "title": "Station: Bengaluru (Kadabagere/Hoody) Substation",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Bengaluru (Kadabagere/Hoody) Substation\nType: substation\nLatitude: 12.9716\nLongitude: 77.5946\nTransmission lines meeting here: 2\nDirectly connected stations and the line distance to each:\n  - Bengaluru (Kadabagere/Hoody) Substation <-> Mysuru Substation: 128.017 km\n  - Bengaluru (Kadabagere/Hoody) Substation <-> Tumakuru Substation: 65.802 km",
+      "metadata": {
+        "station": "Bengaluru (Kadabagere/Hoody) Substation",
+        "degree": 2
+      }
+    },
+    {
+      "id": "station:chitradurga-wind-cluster",
+      "kind": "dataset",
+      "title": "Station: Chitradurga Wind Cluster",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Chitradurga Wind Cluster\nType: wind\nLatitude: 14.23\nLongitude: 76.4\nTransmission lines meeting here: 4\nDirectly connected stations and the line distance to each:\n  - Chitradurga Wind Cluster <-> Bellary Thermal Power Station: 113.549 km\n  - Chitradurga Wind Cluster <-> Davangere Substation: 57.733 km\n  - Chitradurga Wind Cluster <-> Pavagada Solar Park (Shakti Sthala): 95.971 km\n  - Chitradurga Wind Cluster <-> Shivamogga Substation: 95.728 km",
+      "metadata": {
+        "station": "Chitradurga Wind Cluster",
+        "degree": 4
+      }
+    },
+    {
+      "id": "station:davangere-substation",
+      "kind": "dataset",
+      "title": "Station: Davangere Substation",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Davangere Substation\nType: substation\nLatitude: 14.4644\nLongitude: 75.9218\nTransmission lines meeting here: 3\nDirectly connected stations and the line distance to each:\n  - Davangere Substation <-> Chitradurga Wind Cluster: 57.733 km\n  - Davangere Substation <-> Gadag Wind-Solar Hybrid Cluster: 66.336 km\n  - Davangere Substation <-> Shivamogga Substation: 70.613 km",
+      "metadata": {
+        "station": "Davangere Substation",
+        "degree": 3
+      }
+    },
+    {
+      "id": "station:gadag-wind-solar-hybrid-cluster",
+      "kind": "dataset",
+      "title": "Station: Gadag Wind-Solar Hybrid Cluster",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Gadag Wind-Solar Hybrid Cluster\nType: wind\nLatitude: 14.99\nLongitude: 75.63\nTransmission lines meeting here: 2\nDirectly connected stations and the line distance to each:\n  - Gadag Wind-Solar Hybrid Cluster <-> Davangere Substation: 66.336 km\n  - Gadag Wind-Solar Hybrid Cluster <-> Kappatagudda Wind Cluster: 40.088 km",
+      "metadata": {
+        "station": "Gadag Wind-Solar Hybrid Cluster",
+        "degree": 2
+      }
+    },
+    {
+      "id": "station:gerusoppa-power-house",
+      "kind": "dataset",
+      "title": "Station: Gerusoppa Power House",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Gerusoppa Power House\nType: hydro\nLatitude: 14.205\nLongitude: 74.652\nTransmission lines meeting here: 3\nDirectly connected stations and the line distance to each:\n  - Gerusoppa Power House <-> Kadra Power House: 67.843 km\n  - Gerusoppa Power House <-> Linganamakki Dam Power House: 19.511 km\n  - Gerusoppa Power House <-> Sharavathy Generating Station: 15.412 km",
+      "metadata": {
+        "station": "Gerusoppa Power House",
+        "degree": 3
+      }
+    },
+    {
+      "id": "station:hassan-substation",
+      "kind": "dataset",
+      "title": "Station: Hassan Substation",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Hassan Substation\nType: substation\nLatitude: 13.0072\nLongitude: 76.1004\nTransmission lines meeting here: 3\nDirectly connected stations and the line distance to each:\n  - Hassan Substation <-> Mangaluru Substation: 135.243 km\n  - Hassan Substation <-> Mysuru Substation: 98.373 km\n  - Hassan Substation <-> Tumakuru Substation: 116.077 km",
+      "metadata": {
+        "station": "Hassan Substation",
+        "degree": 3
+      }
+    },
+    {
+      "id": "station:hubballi-dharwad-substation",
+      "kind": "dataset",
+      "title": "Station: Hubballi-Dharwad Substation",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Hubballi-Dharwad Substation\nType: substation\nLatitude: 15.3647\nLongitude: 75.124\nTransmission lines meeting here: 3\nDirectly connected stations and the line distance to each:\n  - Hubballi-Dharwad Substation <-> Belagavi Substation: 86.065 km\n  - Hubballi-Dharwad Substation <-> Kappatagudda Wind Cluster: 56.424 km\n  - Hubballi-Dharwad Substation <-> Supa Dam Power House: 66.311 km",
+      "metadata": {
+        "station": "Hubballi-Dharwad Substation",
+        "degree": 3
+      }
+    },
+    {
+      "id": "station:kadra-power-house",
+      "kind": "dataset",
+      "title": "Station: Kadra Power House",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Kadra Power House\nType: hydro\nLatitude: 14.802\nLongitude: 74.522\nTransmission lines meeting here: 4\nDirectly connected stations and the line distance to each:\n  - Kadra Power House <-> Gerusoppa Power House: 67.843 km\n  - Kadra Power House <-> Kaiga Nuclear Power Station: 11.275 km\n  - Kadra Power House <-> Kodasalli Power House: 6.225 km\n  - Kadra Power House <-> Nagjhari Power House: 10.397 km",
+      "metadata": {
+        "station": "Kadra Power House",
+        "degree": 4
+      }
+    },
+    {
+      "id": "station:kaiga-nuclear-power-station",
+      "kind": "dataset",
+      "title": "Station: Kaiga Nuclear Power Station",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Kaiga Nuclear Power Station\nType: nuclear\nLatitude: 14.864\nLongitude: 74.439\nTransmission lines meeting here: 2\nDirectly connected stations and the line distance to each:\n  - Kaiga Nuclear Power Station <-> Kadra Power House: 11.275 km\n  - Kaiga Nuclear Power Station <-> Kodasalli Power House: 12.594 km",
+      "metadata": {
+        "station": "Kaiga Nuclear Power Station",
+        "degree": 2
+      }
+    },
+    {
+      "id": "station:kalaburagi-substation",
+      "kind": "dataset",
+      "title": "Station: Kalaburagi Substation",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Kalaburagi Substation\nType: substation\nLatitude: 17.3297\nLongitude: 76.8343\nTransmission lines meeting here: 2\nDirectly connected stations and the line distance to each:\n  - Kalaburagi Substation <-> Raichur Thermal Power Station: 134.588 km\n  - Kalaburagi Substation <-> Yermarus Thermal Power Station: 141.886 km",
+      "metadata": {
+        "station": "Kalaburagi Substation",
+        "degree": 2
+      }
+    },
+    {
+      "id": "station:kappatagudda-wind-cluster",
+      "kind": "dataset",
+      "title": "Station: Kappatagudda Wind Cluster",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Kappatagudda Wind Cluster\nType: wind\nLatitude: 15.35\nLongitude: 75.65\nTransmission lines meeting here: 2\nDirectly connected stations and the line distance to each:\n  - Kappatagudda Wind Cluster <-> Gadag Wind-Solar Hybrid Cluster: 40.088 km\n  - Kappatagudda Wind Cluster <-> Hubballi-Dharwad Substation: 56.424 km",
+      "metadata": {
+        "station": "Kappatagudda Wind Cluster",
+        "degree": 2
+      }
+    },
+    {
+      "id": "station:kodasalli-power-house",
+      "kind": "dataset",
+      "title": "Station: Kodasalli Power House",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Kodasalli Power House\nType: hydro\nLatitude: 14.848\nLongitude: 74.555\nTransmission lines meeting here: 4\nDirectly connected stations and the line distance to each:\n  - Kodasalli Power House <-> Kadra Power House: 6.225 km\n  - Kodasalli Power House <-> Kaiga Nuclear Power Station: 12.594 km\n  - Kodasalli Power House <-> Nagjhari Power House: 5.379 km\n  - Kodasalli Power House <-> Supa Dam Power House: 17.58 km",
+      "metadata": {
+        "station": "Kodasalli Power House",
+        "degree": 4
+      }
+    },
+    {
+      "id": "station:linganamakki-dam-power-house",
+      "kind": "dataset",
+      "title": "Station: Linganamakki Dam Power House",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Linganamakki Dam Power House\nType: hydro\nLatitude: 14.205\nLongitude: 74.833\nTransmission lines meeting here: 3\nDirectly connected stations and the line distance to each:\n  - Linganamakki Dam Power House <-> Gerusoppa Power House: 19.511 km\n  - Linganamakki Dam Power House <-> Sharavathy Generating Station: 5.013 km\n  - Linganamakki Dam Power House <-> Varahi Underground Power House: 73.188 km",
+      "metadata": {
+        "station": "Linganamakki Dam Power House",
+        "degree": 3
+      }
+    },
+    {
+      "id": "station:mangaluru-substation",
+      "kind": "dataset",
+      "title": "Station: Mangaluru Substation",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Mangaluru Substation\nType: substation\nLatitude: 12.9141\nLongitude: 74.856\nTransmission lines meeting here: 2\nDirectly connected stations and the line distance to each:\n  - Mangaluru Substation <-> Hassan Substation: 135.243 km\n  - Mangaluru Substation <-> Varahi Underground Power House: 71.64 km",
+      "metadata": {
+        "station": "Mangaluru Substation",
+        "degree": 2
+      }
+    },
+    {
+      "id": "station:mysuru-substation",
+      "kind": "dataset",
+      "title": "Station: Mysuru Substation",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Mysuru Substation\nType: substation\nLatitude: 12.2958\nLongitude: 76.6394\nTransmission lines meeting here: 3\nDirectly connected stations and the line distance to each:\n  - Mysuru Substation <-> Bengaluru (Kadabagere/Hoody) Substation: 128.017 km\n  - Mysuru Substation <-> Hassan Substation: 98.373 km\n  - Mysuru Substation <-> Tumakuru Substation: 126.934 km",
+      "metadata": {
+        "station": "Mysuru Substation",
+        "degree": 3
+      }
+    },
+    {
+      "id": "station:nagjhari-power-house",
+      "kind": "dataset",
+      "title": "Station: Nagjhari Power House",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Nagjhari Power House\nType: hydro\nLatitude: 14.85\nLongitude: 74.605\nTransmission lines meeting here: 3\nDirectly connected stations and the line distance to each:\n  - Nagjhari Power House <-> Kadra Power House: 10.397 km\n  - Nagjhari Power House <-> Kodasalli Power House: 5.379 km\n  - Nagjhari Power House <-> Supa Dam Power House: 13.733 km",
+      "metadata": {
+        "station": "Nagjhari Power House",
+        "degree": 3
+      }
+    },
+    {
+      "id": "station:pavagada-solar-park--shakti-sthala",
+      "kind": "dataset",
+      "title": "Station: Pavagada Solar Park (Shakti Sthala)",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Pavagada Solar Park (Shakti Sthala)\nType: solar\nLatitude: 14.1\nLongitude: 77.28\nTransmission lines meeting here: 3\nDirectly connected stations and the line distance to each:\n  - Pavagada Solar Park (Shakti Sthala) <-> Bellary Thermal Power Station: 123.81 km\n  - Pavagada Solar Park (Shakti Sthala) <-> Chitradurga Wind Cluster: 95.971 km\n  - Pavagada Solar Park (Shakti Sthala) <-> Tumakuru Substation: 86.545 km",
+      "metadata": {
+        "station": "Pavagada Solar Park (Shakti Sthala)",
+        "degree": 3
+      }
+    },
+    {
+      "id": "station:raichur-thermal-power-station",
+      "kind": "dataset",
+      "title": "Station: Raichur Thermal Power Station",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Raichur Thermal Power Station\nType: thermal\nLatitude: 16.2274\nLongitude: 77.3565\nTransmission lines meeting here: 3\nDirectly connected stations and the line distance to each:\n  - Raichur Thermal Power Station <-> Bellary Thermal Power Station: 131.24 km\n  - Raichur Thermal Power Station <-> Kalaburagi Substation: 134.588 km\n  - Raichur Thermal Power Station <-> Yermarus Thermal Power Station: 9.419 km",
+      "metadata": {
+        "station": "Raichur Thermal Power Station",
+        "degree": 3
+      }
+    },
+    {
+      "id": "station:sharavathy-generating-station",
+      "kind": "dataset",
+      "title": "Station: Sharavathy Generating Station",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Sharavathy Generating Station\nType: hydro\nLatitude: 14.228\nLongitude: 74.793\nTransmission lines meeting here: 2\nDirectly connected stations and the line distance to each:\n  - Sharavathy Generating Station <-> Gerusoppa Power House: 15.412 km\n  - Sharavathy Generating Station <-> Linganamakki Dam Power House: 5.013 km",
+      "metadata": {
+        "station": "Sharavathy Generating Station",
+        "degree": 2
+      }
+    },
+    {
+      "id": "station:shivamogga-substation",
+      "kind": "dataset",
+      "title": "Station: Shivamogga Substation",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Shivamogga Substation\nType: substation\nLatitude: 13.9299\nLongitude: 75.5681\nTransmission lines meeting here: 3\nDirectly connected stations and the line distance to each:\n  - Shivamogga Substation <-> Chitradurga Wind Cluster: 95.728 km\n  - Shivamogga Substation <-> Davangere Substation: 70.613 km\n  - Shivamogga Substation <-> Varahi Underground Power House: 80.329 km",
+      "metadata": {
+        "station": "Shivamogga Substation",
+        "degree": 3
+      }
+    },
+    {
+      "id": "station:supa-dam-power-house",
+      "kind": "dataset",
+      "title": "Station: Supa Dam Power House",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Supa Dam Power House\nType: hydro\nLatitude: 14.95\nLongitude: 74.68\nTransmission lines meeting here: 4\nDirectly connected stations and the line distance to each:\n  - Supa Dam Power House <-> Belagavi Substation: 101.933 km\n  - Supa Dam Power House <-> Hubballi-Dharwad Substation: 66.311 km\n  - Supa Dam Power House <-> Kodasalli Power House: 17.58 km\n  - Supa Dam Power House <-> Nagjhari Power House: 13.733 km",
+      "metadata": {
+        "station": "Supa Dam Power House",
+        "degree": 4
+      }
+    },
+    {
+      "id": "station:tumakuru-substation",
+      "kind": "dataset",
+      "title": "Station: Tumakuru Substation",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Tumakuru Substation\nType: substation\nLatitude: 13.3379\nLongitude: 77.1173\nTransmission lines meeting here: 4\nDirectly connected stations and the line distance to each:\n  - Tumakuru Substation <-> Bengaluru (Kadabagere/Hoody) Substation: 65.802 km\n  - Tumakuru Substation <-> Hassan Substation: 116.077 km\n  - Tumakuru Substation <-> Mysuru Substation: 126.934 km\n  - Tumakuru Substation <-> Pavagada Solar Park (Shakti Sthala): 86.545 km",
+      "metadata": {
+        "station": "Tumakuru Substation",
+        "degree": 4
+      }
+    },
+    {
+      "id": "station:varahi-underground-power-house",
+      "kind": "dataset",
+      "title": "Station: Varahi Underground Power House",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Varahi Underground Power House\nType: hydro\nLatitude: 13.554\nLongitude: 74.933\nTransmission lines meeting here: 3\nDirectly connected stations and the line distance to each:\n  - Varahi Underground Power House <-> Linganamakki Dam Power House: 73.188 km\n  - Varahi Underground Power House <-> Mangaluru Substation: 71.64 km\n  - Varahi Underground Power House <-> Shivamogga Substation: 80.329 km",
+      "metadata": {
+        "station": "Varahi Underground Power House",
+        "degree": 3
+      }
+    },
+    {
+      "id": "station:yermarus-thermal-power-station",
+      "kind": "dataset",
+      "title": "Station: Yermarus Thermal Power Station",
+      "locator": "transmition_lines.csv.csv (station record)",
+      "text": "STATION (dataset record): Yermarus Thermal Power Station\nType: thermal\nLatitude: 16.1913\nLongitude: 77.4363\nTransmission lines meeting here: 3\nDirectly connected stations and the line distance to each:\n  - Yermarus Thermal Power Station <-> Bellary Thermal Power Station: 131.248 km\n  - Yermarus Thermal Power Station <-> Kalaburagi Substation: 141.886 km\n  - Yermarus Thermal Power Station <-> Raichur Thermal Power Station: 9.419 km",
+      "metadata": {
+        "station": "Yermarus Thermal Power Station",
+        "degree": 3
+      }
+    },
+    {
+      "id": "doc:dataset-md:0",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET",
+      "locator": "DATASET.md - DATASET",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET):\n\n[DATASET]\nThe transmission-line CSV in `data/` is the single dataset file for this\nproject. There is one CSV and there will only ever be one: nothing here\ngenerates a network, substitutes a missing value, or writes a second file.\n\n    data/transmition_lines.csv.csv     26 stations, 38 transmission lines\n\nPhase 1 auto-detects the single `*.csv` in `data/`; pass `--data PATH` to point\nsomewhere else.\n\n---",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET"
+      }
+    },
+    {
+      "id": "doc:dataset-md:1",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 1. Source data vs. derived data",
+      "locator": "DATASET.md - DATASET > 1. Source data vs. derived data",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 1. Source data vs. derived data):\n\n[DATASET > 1. Source data vs. derived data]\nThis distinction runs through the whole document. Nothing below blurs it.\n\n| | Meaning |\n|---|---|\n| **SOURCE** | Values that arrived with the dataset. Read, never recomputed, never overwritten. |\n| **DERIVED** | Values this project calculates from source values plus a published tariff. Every one of them is reproducible from the formulas in section 5. |",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 1. Source data vs. derived data"
+      }
+    },
+    {
+      "id": "doc:dataset-md:2",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 1. Source data vs. derived data > SOURCE columns",
+      "locator": "DATASET.md - DATASET > 1. Source data vs. derived data > SOURCE columns",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 1. Source data vs. derived data > SOURCE columns):\n\n[DATASET > 1. Source data vs. derived data > SOURCE columns]\n| Column | Type | Role |\n|--------|------|------|\n| `Source`, `Destination` | text | The two stations a line joins. These are the graph's nodes and edges. |\n| `Type` | text | Facility type of the **source** station (thermal, substation, hydro, …). Used as the map label. It is not copied to the destination; a station picks up its own type from its own rows. |\n| `Source_Latitude`, `Source_Longitude` | float | Map position of the source station. |\n| `Destination_Latitude`, `Destination_Longitude` | float | Map position of the destination station. |\n| `Distance_km` | float | Length of the line. **This is the TSP route cost** and the only quantity either solver minimizes. |\n| `Voltage_kV` | float | Line voltage, 66–400 kV. |\n| `Capacity_MW` | float | Line capacity. |\n| `Loss_Percent` | float | Modeled loss on the line, as a percentage. |\n| `Energy_Loss_MW` | float | Modeled power lost on the line. See section 3. |",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 1. Source data vs. derived data > SOURCE columns"
+      }
+    },
+    {
+      "id": "doc:dataset-md:3",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 1. Source data vs. derived data > DERIVED columns",
+      "locator": "DATASET.md - DATASET > 1. Source data vs. derived data > DERIVED columns",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 1. Source data vs. derived data > DERIVED columns):\n\n[DATASET > 1. Source data vs. derived data > DERIVED columns]\nThese two were **added** to the existing CSV. They sit after every source\ncolumn, and no source value was altered to make room for them — each row is its\noriginal text with two fields appended.\n\n| Column | Type | Definition |\n|--------|------|------------|\n| `Loss_Cost_Per_Hour_INR` | float | `Energy_Loss_MW × 1000 × Tariff_INR_per_kWh` — calculated |\n| `Loss_Cost_Per_Year_INR` | float | `Loss_Cost_Per_Hour_INR × 8760` — calculated, **annualised estimate** |\n\nA row whose `Energy_Loss_MW` is blank gets two blank cells. It never gets a\nsubstituted number.\n\nBoth columns are owned by `energy_cost/recompute.py`:\n\n```\npython -m energy_cost.recompute          # rewrite them at the current tariff\npython -m energy_cost.recompute --check  # report drift without writing\n```\n\n`tests/test_energy_cost.py` runs the `--check` path, so a tariff change that is\nnot followed through to the CSV fails the suite instead of drifting silently.\n\n---",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 1. Source data vs. derived data > DERIVED columns"
+      }
+    },
+    {
+      "id": "doc:dataset-md:4",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 2. `Energy_Loss_MW` — definition and standing",
+      "locator": "DATASET.md - DATASET > 2. `Energy_Loss_MW` — definition and standing",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 2. `Energy_Loss_MW` — definition and standing):\n\n[DATASET > 2. `Energy_Loss_MW` — definition and standing]\n`Energy_Loss_MW` is the **modeled steady-state power dissipated by one\ntransmission line**, in megawatts, while that line carries its modeled flow.\n\nThree consequences follow, and all three shape how it is used:\n\n1. **It is a power figure, not an energy figure.** It becomes energy only when\n   multiplied by a duration. One hour at *N* MW is *N* × 1000 kWh.\n2. **It is a property of the line, not of a trip across it.** A line dissipates\n   this power continuously while energised. Crossing it twice does not double\n   it — see section 4.\n3. **It is modeled, not metered.** The dataset supplies no measurement\n   provenance, no load factor, no time series and no operating schedule. Every\n   figure built on it inherits that standing.\n\n`Loss_Percent` is carried alongside it and shown in the UI, but the route\ntotals are built from `Energy_Loss_MW`, which is already an absolute quantity.\n\n> **Loss is not a function of distance here.** A long line over efficient\n> conductors can lose less than a short heavily loaded one. Route distance and\n> route loss are two independent readings taken from the same set of lines.\n> Nothing in this project derives one from the other.\n\n---",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 2. `Energy_Loss_MW` — definition and standing"
+      }
+    },
+    {
+      "id": "doc:dataset-md:5",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 3. How a route maps onto transmission lines",
+      "locator": "DATASET.md - DATASET > 3. How a route maps onto transmission lines",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 3. How a route maps onto transmission lines):\n\n[DATASET > 3. How a route maps onto transmission lines]\nThis is the part that needs stating plainly, because **a route leg is not a\ntransmission line**.\n\nThe network is sparse: 26 stations joined by 38 lines, so most station pairs\nhave no direct line between them. `phase1.network.Network` therefore routes over\nthe **shortest-path closure** — `travel_cost(a, b)` is the length of the\nshortest chain of real lines from `a` to `b`, found by Dijkstra over\n`Distance_km`. A single leg of the tour can therefore be a chain of several real\nlines, with pass-through stations in between.\n\nEvery `Leg` records that chain in `leg.path`, the stations physically traversed\nincluding both ends. The mapping walks it:\n\n```\nfor each leg in the route:\n    for each consecutive pair (a, b) in leg.path:\n        line = network.edge_between(a, b)     # a real CSV row\n        record line, and count one traversal\n```\n\nEach consecutive pair in a `path` **is** a real line, because `travel_path` only\never steps along the adjacency built from the CSV. Every line the analysis\nreports is a row of the dataset, carrying that row's own `Distance_km`,\n`Loss_Percent` and `Energy_Loss_MW`.",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 3. How a route maps onto transmission lines"
+      }
+    },
+    {
+      "id": "doc:dataset-md:6",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 3. How a route maps onto transmission lines > Unmatched steps",
+      "locator": "DATASET.md - DATASET > 3. How a route maps onto transmission lines > Unmatched steps",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 3. How a route maps onto transmission lines > Unmatched steps):\n\n[DATASET > 3. How a route maps onto transmission lines > Unmatched steps]\nTwo cases are reported rather than guessed at:\n\n| Case | Handling |\n|------|----------|\n| A step whose two stations have no line between them | Recorded in `unmatched_steps` with a reason; contributes nothing to the total. |\n| A leg that records no traversed path at all | Recorded in `unmatched_steps`; contributes nothing. |\n| A line used whose `Energy_Loss_MW` is blank | Recorded in `lines_missing_loss`; contributes nothing, and the route total is flagged as a **lower bound**. |\n\nOn the current dataset all three lists are empty: every leg of both routes\nresolves to lines that carry a loss value. The handling exists so that a future\ndataset with gaps is reported honestly rather than costed as if the gaps were\nzero.\n\n---",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 3. How a route maps onto transmission lines > Unmatched steps"
+      }
+    },
+    {
+      "id": "doc:dataset-md:7",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 4. Route-level energy loss",
+      "locator": "DATASET.md - DATASET > 4. Route-level energy loss",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 4. Route-level energy loss):\n\n[DATASET > 4. Route-level energy loss]\nTotal_Route_Energy_Loss_MW = sum of Energy_Loss_MW\n                                 over the DISTINCT transmission lines\n                                 the route runs over\n\n**Distinct lines, counted once each.** Because `Energy_Loss_MW` is a\nsteady-state property of a line (section 2), adding it once per traversal would\ncount the same continuously-present loss twice. A tour on a sparse network\nregularly recrosses lines, so this is not a corner case.\n\nThe traversal-weighted sum is reported alongside it as\n`traversal_energy_loss_mw`, together with `traversal_count` and\n`revisited_lines`, so the difference between the two conventions is visible\nrather than buried.\n\nFor the reference run — Nearest Neighbour from Mysuru Substation — the tour's\n26 legs expand into 45 traversals over 31 distinct lines, 13 of which are\ncrossed more than once.\n\n---",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 4. Route-level energy loss"
+      }
+    },
+    {
+      "id": "doc:dataset-md:8",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 5. The tariff, and the money > The rate",
+      "locator": "DATASET.md - DATASET > 5. The tariff, and the money > The rate",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 5. The tariff, and the money > The rate):\n\n[DATASET > 5. The tariff, and the money > The rate]\n| Field | Value |\n|---|---|\n| **Order** | Combined Tariff Order 2025 of BESCOM / MESCOM / CESC / HESCOM / GESCOM — Annual Performance Review for FY24 and approval of ARR and Retail Supply Tariff for the control period FY2025-26 to FY2027-28 |\n| **Authority** | Karnataka Electricity Regulatory Commission (KERC) |\n| **Order date** | 27 March 2025 |\n| **Located at** | Annexure-9, \"TARIFF SCHEDULE HT-2(a)\", order page 550 |\n| **Category** | HT-2(a) — Industries including MSME |\n| **Component** | Energy Charges (per kWh) — **this component only** |\n| **Rate** | **660 paise/kWh = ₹6.60/kWh** |\n| **Applicable years** | FY2025-26 and FY2026-27 (the same schedule sets 650 paise/kWh for FY2027-28) |\n| **Source** | <https://kerc.karnataka.gov.in/uploads/96731743148968.pdf>, listed on <https://kerc.karnataka.gov.in/143/tariff-order-2025/en> |\n| **Date accessed** | 10 September 2026 |\n\nVerified by extracting the text of the Commission's own PDF, not from a news\nreport or a secondary summary. The KERC corrigendum of 26 May 2025 was also\nchecked: it amends the LT-4a subsidy tables and the Discounted Energy Rate\nScheme, and leaves the HT-2(a) schedule untouched.",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 5. The tariff, and the money > The rate"
+      }
+    },
+    {
+      "id": "doc:dataset-md:9",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 5. The tariff, and the money > Why this category",
+      "locator": "DATASET.md - DATASET > 5. The tariff, and the money > Why this category",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 5. The tariff, and the money > Why this category):\n\n[DATASET > 5. The tariff, and the money > Why this category]\nThe CSV describes a high-voltage transmission network — 66 kV to 400 kV lines\nbetween generating stations and substations. Energy lost on those lines is\nenergy carried at HT level that would otherwise have reached HT consumers, so\nthe HT industrial energy charge is the closest official Karnataka rate to what\nthat energy is worth.\n\nKERC's **KPTCL Tariff Order 2025** was considered and rejected for this purpose:\nthe transmission tariff it sets is in ₹/kW/month of capacity, which cannot price\na kWh.",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 5. The tariff, and the money > Why this category"
+      }
+    },
+    {
+      "id": "doc:dataset-md:10",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 5. The tariff, and the money > On the ₹3.00/kWh figure",
+      "locator": "DATASET.md - DATASET > 5. The tariff, and the money > On the ₹3.00/kWh figure",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 5. The tariff, and the money > On the ₹3.00/kWh figure):\n\n[DATASET > 5. The tariff, and the money > On the ₹3.00/kWh figure]\nA figure of ₹3.00/kWh has circulated as \"the March 2025 KERC HT industrial\nenergy charge\". **It does not survive checking against the order.** The\nFY2025-26 HT-2(a) energy charge in Annexure-9 is 660 paise/kWh. ₹3.00/kWh is\nused nowhere in this project.",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 5. The tariff, and the money > On the ₹3.00/kWh figure"
+      }
+    },
+    {
+      "id": "doc:dataset-md:11",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 5. The tariff, and the money > ENERGY CHARGE ONLY — what is excluded",
+      "locator": "DATASET.md - DATASET > 5. The tariff, and the money > ENERGY CHARGE ONLY — what is excluded",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 5. The tariff, and the money > ENERGY CHARGE ONLY — what is excluded):\n\n[DATASET > 5. The tariff, and the money > ENERGY CHARGE ONLY — what is excluded]\n₹6.60/kWh is the energy-charge component in isolation. Every other line on a\nKarnataka electricity bill is deliberately **excluded**:\n\n- demand charges (HT-2(a): ₹345 per kVA per month, FY2025-26)\n- fixed charges\n- FPPCA (fuel and power purchase cost adjustment)\n- the FY2024-25 Annual Performance Review true-up adjustment ordered\n  17 April 2026 (for example +56 paise/unit for BESCOM) — a separate recovery\n  component, not the approved energy charge\n- the pension and gratuity surcharge\n- electricity tax and other statutory levies\n- Time-of-Day adjustments (±100 paise/unit by slot and season)\n\n**A figure produced from this rate is the value of the lost energy. It is not an\nelectricity bill.**",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 5. The tariff, and the money > ENERGY CHARGE ONLY — what is excluded"
+      }
+    },
+    {
+      "id": "doc:dataset-md:12",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 5. The tariff, and the money > The formulas",
+      "locator": "DATASET.md - DATASET > 5. The tariff, and the money > The formulas",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 5. The tariff, and the money > The formulas):\n\n[DATASET > 5. The tariff, and the money > The formulas]\nLoss_Cost_Per_Hour_INR = Total_Route_Energy_Loss_MW\n                             × 1000                       (1 MW = 1000 kW,\n                                                           1 MW for 1 h = 1000 kWh)\n                             × Tariff_INR_per_kWh         (= 6.60)\n\n    Loss_Cost_Per_Year_INR = Loss_Cost_Per_Hour_INR × 8760\n\nBoth are applied identically at line level (the two derived CSV columns) and at\nroute level (the API's `energy` block), so a route total is the sum of its\nlines' hourly costs.",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 5. The tariff, and the money > The formulas"
+      }
+    },
+    {
+      "id": "doc:dataset-md:13",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 5. The tariff, and the money > The 8,760-hour assumption",
+      "locator": "DATASET.md - DATASET > 5. The tariff, and the money > The 8,760-hour assumption",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 5. The tariff, and the money > The 8,760-hour assumption):\n\n[DATASET > 5. The tariff, and the money > The 8,760-hour assumption]\n`Loss_Cost_Per_Year_INR` is an **ANNUALISED ESTIMATE**, and the label matters.\n\nMultiplying by 8,760 assumes the modeled loss is present **continuously, for\nevery hour of the year**. The dataset carries no load factor, no generation\nschedule, no dispatch profile and no outage data, so nothing in this project\nknows how many hours these lines actually run at the modeled flow. Renewable\nsources in the network — Pavagada Solar Park, the wind clusters — plainly do not\nrun flat out for 8,760 hours a year.\n\nRead the annual figure as *\"what a year at this constant loss would be worth\"*.\nIt is **not**:\n\n- an actual yearly loss\n- an actual electricity bill\n- a forecast\n\nIt would become a real annual figure only if the dataset gained a real load\nfactor or operating profile. It has neither.\n\n---",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 5. The tariff, and the money > The 8,760-hour assumption"
+      }
+    },
+    {
+      "id": "doc:dataset-md:14",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 6. Limitations",
+      "locator": "DATASET.md - DATASET > 6. Limitations",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 6. Limitations):\n\n[DATASET > 6. Limitations]\n1. **Modeled, not metered.** `Energy_Loss_MW` and `Loss_Percent` arrive with no\n   measurement provenance. Everything downstream is only as good as they are.\n2. **No time dimension.** One steady-state number per line, no load curve, no\n   seasonality. This is what forces the 8,760-hour assumption.\n3. **Snapshot tariff.** ₹6.60/kWh is the FY2025-26/FY2026-27 approved energy\n   charge. It will be superseded. When it is, update\n   `energy_cost/tariff.py` — the rate and its provenance fields together — and\n   re-run `python -m energy_cost.recompute`.\n4. **One tariff for the whole network.** The 26 stations span several ESCOM\n   territories (BESCOM, HESCOM, GESCOM, CESC, MESCOM). The single combined\n   order sets the same HT-2(a) schedule for all of them, so one rate is correct\n   here — but a future order that differentiates by ESCOM would need this\n   revisited.\n5. **Retail rate on bulk energy.** The HT industrial energy charge is what an HT\n   consumer pays, which is not identical to the utility's cost of procuring the\n   lost energy (KERC records BESCOM's average power purchase cost at\n   ₹6.44/unit for FY24 and ₹6.54/unit for FY25). The HT-2(a) charge is used\n   because it is a Commission-*approved tariff*; the power purchase cost is a\n   licensee's reported cost, not a tariff.\n6. **Loss is analysed, never optimized.** Both solvers minimize `Distance_km`\n   and nothing else. See section 7.\n7. **Parallel lines.** Where the CSV lists two lines between the same pair of\n   stations, `Network` routes over the shorter one, and only that one is costed.\n   The current dataset has no such pair — 38 rows produce 38 routable lines.",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 6. Limitations"
+      }
+    },
+    {
+      "id": "doc:dataset-md:15",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 6. Limitations",
+      "locator": "DATASET.md - DATASET > 6. Limitations",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 6. Limitations):\n\n[DATASET > 6. Limitations]\nof\n   stations, `Network` routes over the shorter one, and only that one is costed.\n   The current dataset has no such pair — 38 rows produce 38 routable lines.\n\n---",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 6. Limitations"
+      }
+    },
+    {
+      "id": "doc:dataset-md:16",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 7. This is analysis, not an optimization objective",
+      "locator": "DATASET.md - DATASET > 7. This is analysis, not an optimization objective",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 7. This is analysis, not an optimization objective):\n\n[DATASET > 7. This is analysis, not an optimization objective]\nThe route energy-loss costing looks at the tours the solvers **already chose**.\nIt changes no algorithm:\n\n- `phase1.nn_tsp.solve` still minimizes `Distance_km`.\n- `phase2.hybrid.hybrid_solve` still minimizes `Distance_km`.\n- The QAOA configuration is untouched.\n\nEnergy loss is not a term in either cost function. A consequence worth naming:\n**the shorter route is not automatically the lower-loss route.** On the\nreference run the hybrid tour is shorter yet crosses lines with a higher total\nmodeled loss. That is a genuine finding, and it is reported as-is rather than\nsmoothed over.\n\nMaking energy loss part of the optimization objective would be a different\nchange, and is not this one.\n\n---",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 7. This is analysis, not an optimization objective"
+      }
+    },
+    {
+      "id": "doc:dataset-md:17",
+      "kind": "doc",
+      "title": "DATASET.md - dataset definition and methodology - DATASET > 8. Where the code lives",
+      "locator": "DATASET.md - DATASET > 8. Where the code lives",
+      "text": "PROJECT DOCUMENTATION, DATASET.md (DATASET > 8. Where the code lives):\n\n[DATASET > 8. Where the code lives]\n| Path | Role |\n|---|---|\n| `energy_cost/tariff.py` | The verified rate, its provenance, and the MW→kWh→₹ conversions. |\n| `energy_cost/route_loss.py` | Route → lines → loss → money, and the NN vs hybrid comparison. |\n| `energy_cost/recompute.py` | Owns the two derived CSV columns. |\n| `backend/app/schemas/energy.py` | Response models for the `energy` block. |\n| `backend/app/services/serialize.py` | Reshaping only; no figure is recomputed there. |\n| `tests/test_energy_cost.py` | Arithmetic, aggregation, edge cases, regression guards. |\n| `backend/tests/test_energy_api.py` | The same, as `/solve/compare` returns it. |\n\nThe `energy` block appears on `POST /solve/compare`.",
+      "metadata": {
+        "file": "DATASET.md",
+        "heading": "DATASET > 8. Where the code lives"
+      }
+    },
+    {
+      "id": "doc:readme-md:0",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP)",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP)",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP)):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP)]\nModels Karnataka's power distribution network as a Travelling Salesman Problem and\ncompares a Classical solver against a Quantum (QAOA) solver.\n\n**Status: Phase 2 — classical Nearest Neighbour plus a quantum QAOA solver.**\nNo frontend, database, authentication, or energy-loss logic yet.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP)"
+      }
+    },
+    {
+      "id": "doc:readme-md:1",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 1 quick start",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 1 quick start",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 1 quick start):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 1 quick start]\n```bash\npy -3.13 -m venv .venv\n.venv\\Scripts\\python.exe -m pip install pandas matplotlib\n```\n\n```bash\n.venv\\Scripts\\python.exe run_phase1.py --list\n.venv\\Scripts\\python.exe run_phase1.py --start \"Mysuru Substation\"\n.venv\\Scripts\\python.exe run_phase1.py            # prompts for a start station\n```\n\nOptions: `--data PATH`, `--output PATH`, `--no-plot`, `--no-labels`,\n`--component N` (route inside one connected group of a disconnected network),\n`--layout {auto,geographic,force}`.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 1 quick start"
+      }
+    },
+    {
+      "id": "doc:readme-md:2",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 1 quick start > Map readability",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 1 quick start > Map readability",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 1 quick start > Map readability):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 1 quick start > Map readability]\nFive Kali river power houses (Kaiga, Kadra, Kodasalli, Nagjhari, Supa Dam) sit\nwithin ~15 km of each other, so their markers would collapse onto one point at\ngrid scale. The map handles that without touching the data:\n\n- stations are seeded at their **real CSV coordinates**, then an anchored\n  repulsion pass pushes any overlapping markers apart while a decaying spring\n  holds them near their true spot (max displacement on this dataset: **2.7% of\n  the map span**);\n- a hollow ring plus a hairline marks the **true coordinates** of every station\n  that was nudged, so the map never misstates where a station is;\n- station labels are placed by a collision-aware pass that avoids other markers,\n  other labels, the leg-number badges and the axes edges, falling back to a\n  leader line when a station is crowded;\n- `--layout force` gives a force-directed view driven purely by the transmission\n  lines — this is also the automatic fallback when the CSV has no coordinates.\n\nNo station is ever removed, merged or renamed, and no coordinate in the dataset\nis modified.\n\nThe map is written to `outputs/nn_route.png`. Tests:\n\n```bash\n.venv\\Scripts\\python.exe -m unittest discover -s tests -v\n```",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 1 quick start > Map readability"
+      }
+    },
+    {
+      "id": "doc:readme-md:3",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command]\n```bash\n.venv\\Scripts\\python.exe -m pip install qiskit qiskit-aer qiskit-ibm-runtime\n```\n\n```bash\n.venv\\Scripts\\python.exe run_phase2.py\n```\n\nThat single command runs the complete Phase 2 comparison on the **full\n26-station network**: it lists the stations and asks which to start from, solves\nthe network classically with Phase 1's Nearest Neighbour, solves it again with\nthe hybrid QAOA reoptimizer on the local simulator, validates both 26-station\ntours, and writes three maps to `outputs/`. The terminal prints the results -\nthe two distances, execution times, stations visited, route validity, the\ndifference and the improvement percentage, the complete 26-station route each\nsolver travelled, and the map paths.\n\nPass `--start \"Mysuru Substation\"` to skip the prompt. It never touches IBM\nhardware, and the whole workflow finishes in about 90 seconds.\n\n| flag | effect |\n|---|---|\n| `--start NAME` | skip the interactive station prompt |\n| `--window 5` | 25-qubit subproblems: shorter tour, but ~90 min to simulate |\n| `--sweeps N` | cap on reoptimization sweeps (default 8; converges earlier) |\n| `--no-labels`, `--layout` | map rendering, as in Phase 1 |\n| `--verbose` | per-check validation, the comparison table, QAOA configuration and sweep progress |\n| `--subset` | the separate single-instance QAOA mode (see below) |",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command"
+      }
+    },
+    {
+      "id": "doc:readme-md:4",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Full-network comparison — classical vs hybrid quantum",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Full-network comparison — classical vs hybrid quantum",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Full-network comparison — classical vs hybrid quantum):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Full-network comparison — classical vs hybrid quantum]\nBoth solvers get the **whole 26-station, 38-line network**, the same starting\nstation and the same `Distance_km` cost, and both return a complete tour that\nstarts at the chosen station, visits all 26 exactly once, and returns to it.\n\n**How the hybrid works.** QAOA cannot take the whole network in one circuit —\nthe position-encoded QUBO would need (26−1)² = **625 qubits** and ~29,400 ZZ\ncouplings. Instead QAOA is the **optimization engine inside a classical\nfull-network reoptimization loop**: starting from the Phase 1 tour, a window of\n`--window` consecutive stations is handed to QAOA as an open path-TSP\nsubproblem (`W²` qubits) with both endpoints pinned, and the new ordering is\nkept when it shortens the tour. Every intermediate state is a complete\n26-station tour.\n\n**The QAOA windows are internal subproblems, never the answer.** A W=5 window is\na 5-station ordering problem inside the loop; the reported QAOA result always\ncontains all 26 stations. This is a hybrid decomposition/reoptimization\napproach, and the project does not claim QAOA directly runs a 625-qubit\n26-station TSP.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Full-network comparison — classical vs hybrid quantum"
+      }
+    },
+    {
+      "id": "doc:readme-md:5",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Full-network comparison — classical vs hybrid quantum",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Full-network comparison — classical vs hybrid quantum",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Full-network comparison — classical vs hybrid quantum):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Full-network comparison — classical vs hybrid quantum]\n\ncontains all 26 stations. This is a hybrid decomposition/reoptimization\napproach, and the project does not claim QAOA directly runs a 625-qubit\n26-station TSP.\n\n**What is not claimed.** No quantum advantage. For reference, unrestricted\nclassical 2-opt reaches 2,083.565 km on this network — better than the hybrid.\nThe limit is the window neighbourhood, not the quantum solver: at W=4 the hybrid\nreaches *exactly* the tour an exhaustive brute-force subsolver finds over the\nsame windows, so QAOA is solving its subproblems optimally.\n\nMaps written to `outputs/`: `nn_full_route.png`, `qaoa_full_route.png` and\n`nn_vs_qaoa_comparison.png`. All three show all 26 stations and all 38 real\ntransmission lines, mark the starting station with a red star, number every leg\nincluding the return, and use the same station coordinates (the layout is\ndeterministic) so the two routes are directly comparable.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Full-network comparison — classical vs hybrid quantum"
+      }
+    },
+    {
+      "id": "doc:readme-md:6",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Single-instance QAOA mode (`--subset`)",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Single-instance QAOA mode (`--subset`)",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Single-instance QAOA mode (`--subset`)):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Single-instance QAOA mode (`--subset`)]\n```bash\n.venv\\Scripts\\python.exe run_phase2.py --subset --start \"Mysuru Substation\"\n.venv\\Scripts\\python.exe run_phase2.py --subset --mode ibm     # real hardware\n```\n\nSolves ONE small QAOA TSP end to end and compares it against Nearest Neighbour\nand the exact optimum over the identical instance. This is the mode that runs on\nIBM hardware. It is a **subproblem demonstration** — its route covers only\n`--size` stations and is never the full-network result.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Single-instance QAOA mode (`--subset`)"
+      }
+    },
+    {
+      "id": "doc:readme-md:7",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Scope: the full network vs. the single-QAOA subset",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Scope: the full network vs. the single-QAOA subset",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Scope: the full network vs. the single-QAOA subset):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Scope: the full network vs. the single-QAOA subset]\n**The project supports the complete dataset.** All **26 stations** and **38\ntransmission lines** in `data/` are loaded, validated and connected as one\nnetwork, and **Phase 1 solves that full network end to end** — every station\nvisited once, 3,017.795 km from `Mysuru Substation`. The CSV is never edited,\nfiltered, or reduced.\n\n**Phase 2 runs QAOA on a subset of that same network, and only because of\nquantum hardware limits.** The standard position-encoded TSP QUBO needs one\nbinary variable — and so one qubit — per (station, tour position) pair, which\ngrows as **O(n²)**. Pinning the start to position 0 leaves `(n-1)²` qubits:\n\n| stations `n` | qubits `(n-1)²` | |\n|---|---|---|\n| 4 | 9 | fast demo |\n| 5 | 16 | **Phase 2 default** |\n| 6 | 25 | 33M-amplitude statevector |\n| **26** | **625** | **the full network — not simulable, and beyond any device available today** |\n\nSo the subset is not a shortcut around the data; it is what current hardware can\ncarry. The `--size` stations are **selected directly from the real, complete\nCSV** — the stations nearest the start by travel cost, or `--stations \"A,B,C\"`\nto choose them yourself. No station is invented, duplicated, renamed or merged,\nand every cost is the same `Distance_km` shortest-path cost Nearest Neighbour\noptimizes.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Scope: the full network vs. the single-QAOA subset"
+      }
+    },
+    {
+      "id": "doc:readme-md:8",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Scope: the full network vs. the single-QAOA subset",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Scope: the full network vs. the single-QAOA subset",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Scope: the full network vs. the single-QAOA subset):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Scope: the full network vs. the single-QAOA subset]\ne them yourself. No station is invented, duplicated, renamed or merged,\nand every cost is the same `Distance_km` shortest-path cost Nearest Neighbour\noptimizes.\n\n**A QAOA run solves that k-station tour. It does not solve the full 26-station\nnetwork, and Phase 2 never reports it as if it did** — every run prints which\n`k of 26` stations it covered and what the full network would cost in qubits.\nThe full network remains Phase 1's job.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Scope: the full network vs. the single-QAOA subset"
+      }
+    },
+    {
+      "id": "doc:readme-md:9",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Simulator vs IBM Quantum",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Simulator vs IBM Quantum",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Simulator vs IBM Quantum):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Simulator vs IBM Quantum]\n| | `--mode simulator` (default) | `--mode ibm` |\n|---|---|---|\n| Runs on | Qiskit Aer, local | real IBM hardware via qiskit-ibm-runtime |\n| Cost | free, seconds | queue time, consumes IBM usage |\n| Noise | none | real device noise |\n| Credentials | none | `IBM_QUANTUM_TOKEN` from the environment |\n\n`--mode ibm` defaults to `--ibm-strategy final-only`: the angles are trained on\nthe simulator and a single job with the tuned angles goes to hardware.\n`--ibm-strategy full` runs every optimizer iteration on hardware inside a\n`Session` — far slower and far more expensive.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > Simulator vs IBM Quantum"
+      }
+    },
+    {
+      "id": "doc:readme-md:10",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > IBM credentials",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > IBM credentials",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > IBM credentials):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > IBM credentials]\nCredentials are read **only** from environment variables, and are never\nhardcoded, printed, logged, or committed:\n\n```\nIBM_QUANTUM_TOKEN      required    API key\nIBM_QUANTUM_INSTANCE   optional    CRN / instance\nIBM_QUANTUM_CHANNEL    optional    default: ibm_quantum_platform\nIBM_QUANTUM_BACKEND    optional    default: least busy operational device\n```\n\nPut them in a `.env` in the project root, which `.gitignore` already excludes:\n\n```bash\ncopy .env.example .env\n```\n\nthen paste the key after `IBM_QUANTUM_TOKEN=`. A real environment variable\nalways wins over `.env`, so `set IBM_QUANTUM_TOKEN=...` overrides the file\nwithout editing it. `.env.example` is the committed template and must stay\nempty — a test asserts it carries no values.\n\nVerify the setup without contacting IBM or spending a job:\n\n```bash\n.venv\\Scripts\\python.exe run_phase2.py --check-ibm\n```\n\nIt reports which variables are set; for the token it prints the character count\nonly, never the value.\n\nVerified against the installed packages (qiskit 2.5.2, qiskit-ibm-runtime 0.49):\nthe retired `ibm_quantum` channel no longer exists, circuits must be transpiled\nto the target backend's ISA before submission, and `QAOAAnsatz` (the class) is\ndeprecated in favour of the `qaoa_ansatz` function.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase 2 quick start — one command > IBM credentials"
+      }
+    },
+    {
+      "id": "doc:readme-md:11",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Layout",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Layout",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Layout):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Layout]\n```\nhybrid-quantum-energy-tsp/\n├── data/                  the CSV (source of truth)\n├── phase1/                Phase 1 implementation\n│   ├── data_loader.py     CSV load + validation\n│   ├── network.py         undirected graph + Dijkstra shortest paths\n│   ├── nn_tsp.py          classical Nearest Neighbour solver\n│   ├── layout.py          non-overlapping node placement\n│   ├── visualize.py       network map\n│   └── main.py            CLI\n├── phase2/                Phase 2 implementation (quantum QAOA)\n│   ├── instance.py        small TSP instance taken from the real CSV\n│   ├── qubo.py            TSP -> QUBO\n│   ├── ising.py           QUBO -> Ising Hamiltonian\n│   ├── qaoa.py            Ising -> QAOA -> validated tour\n│   ├── backends.py        Aer simulator / IBM Quantum runtime\n│   ├── credentials.py     env-only IBM credentials, never echoed back\n│   ├── hybrid.py          FULL-network QAOA segment reoptimization\n│   ├── comparison.py      classical vs hybrid, same-problem checks\n│   ├── visualize.py       full-network maps + comparison figure\n│   ├── reference.py       NN + exact optimum on the same instance\n│   └── main.py            CLI\n├── tests/test_phase1.py   Phase 1 tests (real dataset)\n├── tests/test_phase2.py   Phase 2 tests (real dataset)\n├── outputs/               generated maps\n├── run_phase1.py          entry point\n├── run_phase2.py          entry point (QAOA)\n├── backend/               FastAPI service (scaffolding, unused in Phase 1)\n│   ├── app/\n│   │   ├── main.py        app factory + routes wiring\n│   │   ├── api/routes/    HTTP endpoints\n│   │   ├── core/          config / settings\n│   │   ├── dataio/        CSV loading + graph building   (Phase 1)\n│   │   ├── solvers/       classical NN + QAOA            (Phase 2/3)\n│   │   ├── services/      comparison, energy loss\n│   │   └── schemas/       pydantic request/response models\n│   ├── tests/\n│   └── requirements.txt\n├── frontend/              React + Tailwind               (later)\n└── docs/\n```",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Layout"
+      }
+    },
+    {
+      "id": "doc:readme-md:12",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)]\nRequires **Python 3.13**. Python 3.14 is not usable here: pydantic and Qiskit have\nno prebuilt Windows wheels for it, so pip falls back to a Rust/MSVC source build\nthat fails without Visual Studio C++ build tools.\n\n```bash\npy -3.13 -m venv .venv\n```\n\n```bash\n.venv\\Scripts\\python.exe -m pip install -r backend/requirements.txt\n```\n\n```bash\n.venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --app-dir backend\n```\n\nRun those from the repository root. Then open **http://127.0.0.1:8000/docs** for\nthe interactive OpenAPI documentation (schema at `/openapi.json`).\n\nThe API is a thin layer over Phase 1 and Phase 2: every route calls those\nmodules directly, so no solver, cost function or comparison is duplicated.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)"
+      }
+    },
+    {
+      "id": "doc:readme-md:13",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)]\npi.json`).\n\nThe API is a thin layer over Phase 1 and Phase 2: every route calls those\nmodules directly, so no solver, cost function or comparison is duplicated.\n\n| method | endpoint | what it does |\n|---|---|---|\n| GET | `/stations` | all 26 stations, with type, coordinates and degree |\n| GET | `/network` | network summary plus all 38 transmission lines |\n| POST | `/stations/resolve` | check a starting station before solving |\n| POST | `/solve/classical` | Phase 1 Nearest Neighbour — milliseconds |\n| POST | `/solve/hybrid` | Phase 2 hybrid QAOA on the simulator — ~90 s |\n| POST | `/solve/compare` | both solvers, the comparison, and the graphs |\n| GET | `/graphs` | where the three images are, and whether they exist |\n| GET | `/graphs/{name}` | the PNG itself (`nn_route`, `qaoa_route`, `comparison`) |\n| GET | `/health`, `/dataset/status` | liveness and what CSV was loaded |\n\n```bash\ncurl -X POST http://127.0.0.1:8000/solve/classical \\\n  -H \"Content-Type: application/json\" -d \"{\\\"start\\\": \\\"Mysuru Substation\\\"}\"\n```\n\nNotes:",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)"
+      }
+    },
+    {
+      "id": "doc:readme-md:14",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)]\nloaded |\n\n```bash\ncurl -X POST http://127.0.0.1:8000/solve/classical \\\n  -H \"Content-Type: application/json\" -d \"{\\\"start\\\": \\\"Mysuru Substation\\\"}\"\n```\n\nNotes:\n\n- **Simulator only.** Every quantum run uses local Qiskit Aer. No endpoint\n  submits an IBM Quantum job; the IBM configuration is left untouched.\n- `/solve/hybrid` and `/solve/compare` are long requests at their defaults.\n  Lower `sweeps`, or `window`, for a faster answer.\n- An unknown or ambiguous starting station returns **422** with a machine-readable\n  `error` code and suggestions, not a 500.\n- `OUTPUTS_DIR` redirects where the graphs are written.\n- No database and no authentication yet.\n\nTests — the API suite from `backend/`, the solver suites from the root:\n\n```bash\n.venv\\Scripts\\python.exe -m pytest -q\n```\n\n```bash\n.venv\\Scripts\\python.exe -m unittest tests.test_phase1 tests.test_phase2\n```",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the backend API (Phase 3)"
+      }
+    },
+    {
+      "id": "doc:readme-md:15",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the dashboard (Phase 4)",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the dashboard (Phase 4)",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the dashboard (Phase 4)):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the dashboard (Phase 4)]\nA React client for the API. It holds no solver logic: every distance, route and\ncomparison comes from the backend, and the station list is fetched, not\nhardcoded.\n\nStart the backend first (see above), then from `frontend/`:\n\n```bash\nnpm install\n```\n\n```bash\nnpm run dev\n```\n\nOpen <http://localhost:5173>. The dev server proxies the API routes to\n`http://127.0.0.1:8000`, so the browser stays on one origin.\n\nThe dashboard carries the project overview, an interactive map of the 26\nstations and 38 transmission lines, a starting-station selector, the run\ncontrol, both solvers' results, the comparison, both complete 26-station\nitineraries, the generated figures, and an energy-loss section. The results\ncolumn also carries the route loss costing - the lines each route uses, their\nmodeled `Energy_Loss_MW`, and what that is worth at the verified KERC HT-2(a)\nenergy charge. Every run uses the local simulator; the interface cannot submit\nan IBM Quantum job.\n\nSee `frontend/README.md` for the component layout and the design system.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Running the dashboard (Phase 4)"
+      }
+    },
+    {
+      "id": "doc:readme-md:16",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG)",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG)",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG)):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG)]\nA grounded question-answering panel over this project's own context. It lives in\nthe dashboard drawer, next to Routes, Energy loss, Figures and Method.\n\nIt answers from three places and nowhere else:\n\n| Source | What it covers |\n|--------|----------------|\n| The transmission-line CSV | Every line and station record, and the network summary. Column values verbatim, including the derived rupee columns. |\n| Project documentation | `DATASET.md`, `README.md`, `docs/PHASES.md`, `data/README.md`, and the KERC tariff provenance carried in `energy_cost/tariff.py`. |\n| The run on screen | The `/solve/compare` body the dashboard is currently showing - routes, legs, runtimes, QAOA window and qubit count, backend, comparison, and the energy costing. |\n\nIt has no outside knowledge of the Karnataka grid. When the retrieved context\ndoes not support an answer it says so and returns `grounded: false`, rather than\nfilling the gap. Every answer lists the sources it was built from - a CSV row, a\ndocument heading, or a field of the current run - so a figure can be checked\nrather than trusted.\n\nThe run is passed per request and is never written into the shared index, so one\nsession's results cannot surface in another's answer. With no run loaded the\nassistant has no solver context and says so; it never describes a run it cannot\nsee.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG)"
+      }
+    },
+    {
+      "id": "doc:readme-md:17",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG) > Setup",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG) > Setup",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG) > Setup):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG) > Setup]\nGeneration runs on a **local model, via Ollama**. There is no API key, no\naccount and no per-question cost, and the dataset, the solver results and the\ndocuments never leave this machine.\n\nOnce:\n\n```bash\nollama pull llama3.2:3b\n```\n\n(Ollama itself: <https://ollama.com/download>. `llama3.2:3b` is about 2 GB and\nruns on CPU; any model you have pulled works - set `ASSISTANT_MODEL` to use a\ndifferent one. A larger model answers better and runs slower.)\n\nThen build the knowledge base:\n\n```bash\npython reindex_assistant.py\n```\n\nRe-run that whenever the project data changes - a new CSV, a tariff change\nfollowed by `python -m energy_cost.recompute`, or an edit to any of the\ndocuments listed above. The index is derived (`outputs/assistant_index.json`);\ndeleting it costs nothing.\n\nIf Ollama is not running, or the model has not been pulled, the panel says so\nand shows the exact command that fixes it. It does not report a setup problem\nas a gap in the project data, and it never shows a fabricated answer.\n\nThe backend refuses any `OLLAMA_HOST` that is not a loopback address, so the\nproject's data cannot be sent to a remote model by a configuration change.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG) > Setup"
+      }
+    },
+    {
+      "id": "doc:readme-md:18",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG) > Endpoint",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG) > Endpoint",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG) > Endpoint):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG) > Endpoint]\n```\nPOST /assistant/query   { \"question\": \"...\", \"run\": <optional /solve/compare body> }\n                     -> { \"answer\": \"...\", \"sources\": [...], \"grounded\": true, ... }\nGET  /assistant/status  what is indexed, where generation runs, and whether the\n                        local model has been pulled\n```\n\nRetrieval is BM25 over the project's own chunks, computed in process - no second\ndatabase and no embedding vendor. `backend/app/assistant/retrieval.py` explains\nwhy that is the right size here and how a vector-backed retriever would drop in.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > The project assistant (RAG) > Endpoint"
+      }
+    },
+    {
+      "id": "doc:readme-md:19",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase plan",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase plan",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase plan):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase plan]\n| Phase | Scope | State |\n|-------|-------|-------|\n| 0 | Project structure, FastAPI skeleton, health check | done |\n| 1 | Load the CSV, build the graph, classical Nearest Neighbour TSP, map | done |\n| 2 | QAOA TSP: TSP -> QUBO -> Ising -> QAOA, Aer simulator + IBM Quantum | done |\n| 3 | FastAPI backend over the Phase 1 / Phase 2 solvers | done |\n| 4 | React dashboard over the Phase 3 API | done |\n| 5 | Classical vs Quantum comparison | not started |\n| 6 | Energy loss estimation | done (route loss costed at the verified KERC tariff - see `DATASET.md`) |\n| 7 | Visualization + React frontend | done (Phase 4) |\n| 8 | Auth (JWT) + optimization history (PostgreSQL/SQLite) | not started |\n\nEach phase stops for confirmation before the next begins.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Phase plan"
+      }
+    },
+    {
+      "id": "doc:readme-md:20",
+      "kind": "doc",
+      "title": "README.md - project overview and methodology - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Ground rules",
+      "locator": "README.md - Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Ground rules",
+      "text": "PROJECT DOCUMENTATION, README.md (Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Ground rules):\n\n[Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Ground rules]\n- `data/transmission_lines.csv` is the only source of network data. Nothing is fabricated.\n- `Distance_km` is the primary TSP optimization cost.\n- The TSP formulation stays identical between the Classical and QAOA solvers.\n- This project does not reuse code from any earlier implementation.",
+      "metadata": {
+        "file": "README.md",
+        "heading": "Hybrid Quantum-Classical Optimization for Energy Distribution (TSP) > Ground rules"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:0",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log",
+      "locator": "docs/PHASES.md - Phase log",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log):\n\n[Phase log]\nEach phase stops for confirmation before the next one begins.\n\n- New, clean project folder, independent of any earlier implementation.\n- `backend/` FastAPI skeleton: app factory, CORS, `/`, `/health`, `/dataset/status`.\n- `backend/app/core/config.py` resolves the dataset path from settings.\n- Empty packages reserved for later phases: `dataio`, `solvers`, `services`, `schemas`.\n- `data/` created and waiting for `transmission_lines.csv`.\n- Tests: `backend/tests/test_health.py`.\n\nNot implemented: classical TSP, QAOA, IBM Quantum, frontend, auth, database,\nenergy-loss calculation.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:1",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 0 — Project structure (complete) > Environment note",
+      "locator": "docs/PHASES.md - Phase log > Phase 0 — Project structure (complete) > Environment note",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 0 — Project structure (complete) > Environment note):\n\n[Phase log > Phase 0 — Project structure (complete) > Environment note]\nThe venv is built on **Python 3.13** (`py -3.13`). Python 3.14 is installed on this\nmachine and is the default `python`, but pydantic-core has no cp314 Windows wheel,\nso pip tries a Rust build that fails without MSVC build tools. Qiskit also does not\npublish 3.14 wheels yet, so 3.13 is the version to use for every later phase.\n\nVerified at the end of Phase 0: `pytest -q` -> 3 passed.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 0 — Project structure (complete) > Environment note"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:2",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2 — Quantum QAOA (complete)",
+      "locator": "docs/PHASES.md - Phase log > Phase 2 — Quantum QAOA (complete)",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2 — Quantum QAOA (complete)):\n\n[Phase log > Phase 2 — Quantum QAOA (complete)]\nSolves the same TSP, on the same CSV, with the same `Distance_km` cost as the\nPhase 1 Nearest Neighbour solver. Phase 1 was not modified; `phase2/` imports\n`phase1` read-only for the dataset, the graph and the travel costs.\n\nPipeline, one module per step:\n\n- `instance.py` — picks `k` stations from the real CSV (default: the 4 nearest\n  the start by travel cost) and builds the cost matrix from\n  `Network.travel_cost`. Nothing is fabricated.\n- `qubo.py` — TSP -> QUBO. Position encoding `x[i][t]`, start pinned to\n  position 0, so `(k-1)^2` binary variables. \"Exactly one\" constraints enter as\n  squared penalties weighted `k * longest leg`.\n- `ising.py` — QUBO -> Ising, by `x = (1 - z)/2`. Returns a `SparsePauliOp` of\n  Z and ZZ terms plus a constant shift kept out of the circuit.\n- `qaoa.py` — Ising -> QAOA. `qaoa_ansatz` (the function; the `QAOAAnsatz`\n  class is deprecated in Qiskit 2.1), COBYLA over the 2p angles against a CVaR\n  objective, every sampled bitstring decoded and every valid tour scored.\n- `backends.py` — Aer simulator (default) or IBM Quantum runtime.\n- `reference.py` — Phase 1 NN and the brute-force optimum on the same instance.\n\nThe Hamiltonian handed to the circuit is divided by its largest coefficient:\nkilometre-scale coefficients would otherwise force unusably small gamma angles.\nReported distances always come from the unscaled instance.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2 — Quantum QAOA (complete)"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:3",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2 — Quantum QAOA (complete)",
+      "locator": "docs/PHASES.md - Phase log > Phase 2 — Quantum QAOA (complete)",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2 — Quantum QAOA (complete)):\n\n[Phase log > Phase 2 — Quantum QAOA (complete)]\n largest coefficient:\nkilometre-scale coefficients would otherwise force unusably small gamma angles.\nReported distances always come from the unscaled instance.\n\nQAOA is described throughout as approximate. No optimality claim is made; the\nbrute-force optimum is printed alongside so the gap is visible.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2 — Quantum QAOA (complete)"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:4",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2 — Quantum QAOA (complete) > Environment note",
+      "locator": "docs/PHASES.md - Phase log > Phase 2 — Quantum QAOA (complete) > Environment note",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2 — Quantum QAOA (complete) > Environment note):\n\n[Phase log > Phase 2 — Quantum QAOA (complete) > Environment note]\nInstalled into the Phase 1 venv: qiskit 2.5.2, qiskit-aer 0.17.2,\nqiskit-ibm-runtime 0.49.0 (scipy and numpy come along as dependencies).\n\nAPI points verified against the installed packages rather than assumed:\n\n- `qiskit_ibm_runtime` 0.49 accepts only the `ibm_quantum_platform`, `ibm_cloud`\n  and `local` channels — the old `ibm_quantum` channel is gone.\n- Circuits must be transpiled to the target backend's ISA (via\n  `generate_preset_pass_manager`) before submission to hardware.\n- V2 primitives: `sampler.run([(circuit, params)], shots=n)`, results read as\n  `result[0].data[<register>].get_counts()`.\n- The console here is cp1252, so all Phase 2 output is ASCII.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2 — Quantum QAOA (complete) > Environment note"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:5",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2 — Quantum QAOA (complete) > Not implemented in this phase",
+      "locator": "docs/PHASES.md - Phase log > Phase 2 — Quantum QAOA (complete) > Not implemented in this phase",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2 — Quantum QAOA (complete) > Not implemented in this phase):\n\n[Phase log > Phase 2 — Quantum QAOA (complete) > Not implemented in this phase]\nFrontend, authentication, database, energy-loss calculation, new datasets, and\nany change to Phase 1's Dijkstra/graph code.\n\n`python -m unittest discover -s tests` -> 58 tests, OK (31 Phase 1 + 27\nPhase 2), with `-W error::DeprecationWarning` clean.\n\nIBM Quantum mode is implemented and fails cleanly with a clear message when\n`IBM_QUANTUM_TOKEN` is absent, but it has **not** been exercised against real\nhardware — no credentials were available in this environment.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2 — Quantum QAOA (complete) > Not implemented in this phase"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:6",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2 — Quantum QAOA (complete) > Scope clarification (full network vs. QAOA subset)",
+      "locator": "docs/PHASES.md - Phase log > Phase 2 — Quantum QAOA (complete) > Scope clarification (full network vs. QAOA subset)",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2 — Quantum QAOA (complete) > Scope clarification (full network vs. QAOA subset)):\n\n[Phase log > Phase 2 — Quantum QAOA (complete) > Scope clarification (full network vs. QAOA subset)]\nThe dataset is used in full and is never edited. All 26 stations and 38\ntransmission lines are loaded and connected as one network, and Phase 1 solves\nthat whole network classically (3,017.795 km from Mysuru Substation).\n\nPhase 2 runs QAOA over a subset of that same network. The reason is the\nencoding, not the data: the standard position-encoded TSP QUBO needs one binary\nvariable, and so one qubit, per (station, tour position) pair - O(n^2) growth.\nWith the start pinned to position 0 that is (n-1)^2 qubits, so the full network\nwould need (26-1)^2 = 625 qubits: not simulable on Aer, and beyond any device\navailable today.\n\nThe subset stations are selected directly from the real full CSV, by travel cost\nfrom the start (or explicitly with --stations). No station is invented,\nduplicated, renamed or merged, and the cost function is identical to Phase 1's.\n\nA QAOA run solves the k-station tour it was given. It does not solve the full\n26-station network, and every Phase 2 run says so explicitly, printing \"k of 26\nstations\" and the 625-qubit figure the full network would require.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2 — Quantum QAOA (complete) > Scope clarification (full network vs. QAOA subset)"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:7",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2 — Quantum QAOA (complete) > Scope clarification (full network vs. QAOA subset)",
+      "locator": "docs/PHASES.md - Phase log > Phase 2 — Quantum QAOA (complete) > Scope clarification (full network vs. QAOA subset)",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2 — Quantum QAOA (complete) > Scope clarification (full network vs. QAOA subset)):\n\n[Phase log > Phase 2 — Quantum QAOA (complete) > Scope clarification (full network vs. QAOA subset)]\nolve the full\n26-station network, and every Phase 2 run says so explicitly, printing \"k of 26\nstations\" and the 625-qubit figure the full network would require.\n\nTests covering this: `TestFullDatasetIsPreserved` in `tests/test_phase2.py`\nasserts the network is still 26/38 after Phase 2 runs, that Phase 1 still tours\nall 26 stations, that building an instance does not mutate the network, that no\nstation is duplicated or invented, that qubit growth really is (n-1)^2, and that\nthe printed scope note claims no more than it should.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2 — Quantum QAOA (complete) > Scope clarification (full network vs. QAOA subset)"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:8",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete)",
+      "locator": "docs/PHASES.md - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete)",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2b - full-network classical vs hybrid quantum (complete)):\n\n[Phase log > Phase 2b - full-network classical vs hybrid quantum (complete)]\nPhase 2 is not finished at the single-instance QAOA run: the headline comparison\nhas to be full network against full network. That is what `--full` produces.\n\nThe resource analysis (previous section) rules out encoding the whole network\ndirectly: 625 qubits and ~29,400 ZZ couplings, i.e. >=58,800 CNOTs for one QAOA\nlayer. Separately, the raw 38-line graph has NO Hamiltonian cycle - Bellary\nThermal Power Station is a cut vertex whose removal splits the network into a\n22-station and a 3-station component - so an edge-based QUBO over the real lines\nis infeasible by construction, not merely large. Phase 1 already handles this\ncorrectly by solving TSP on the shortest-path (metric) closure, and Phase 2 uses\nthe same closure.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2b - full-network classical vs hybrid quantum (complete)"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:9",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > The hybrid loop (phase2/hybrid.py)",
+      "locator": "docs/PHASES.md - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > The hybrid loop (phase2/hybrid.py)",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > The hybrid loop (phase2/hybrid.py)):\n\n[Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > The hybrid loop (phase2/hybrid.py)]\n1. Start from the complete Phase 1 Nearest Neighbour tour (all 26 stations).\n2. Slide a window of W consecutive stations along the tour, pinning the station\n   before and after it.\n3. Hand the window to QAOA as an open path-TSP subproblem on W^2 qubits\n   (phase2.qubo.build_path_qubo -> Ising -> qaoa_ansatz -> COBYLA/CVaR).\n4. Accept the ordering when it shortens the tour.\n5. Sweep until a sweep improves nothing.\n\nEvery intermediate state is a complete, valid 26-station tour.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > The hybrid loop (phase2/hybrid.py)"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:10",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Result (W=4, 16 qubits per subproblem, Aer simulator)",
+      "locator": "docs/PHASES.md - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Result (W=4, 16 qubits per subproblem, Aer simulator)",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Result (W=4, 16 qubits per subproblem, Aer simulator)):\n\n[Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Result (W=4, 16 qubits per subproblem, Aer simulator)]\nClassical Nearest Neighbour : 3,017.795 km   (0.607 ms)\n    Hybrid QAOA                 : 2,851.243 km   (165.6 s)\n    Improvement                 : +166.552 km    (5.52%)\n    52 QAOA subproblems over 2 sweeps, 5 improvements accepted",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Result (W=4, 16 qubits per subproblem, Aer simulator)"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:11",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Honest framing, enforced in the output",
+      "locator": "docs/PHASES.md - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Honest framing, enforced in the output",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Honest framing, enforced in the output):\n\n[Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Honest framing, enforced in the output]\n- QAOA is the optimization engine inside a classical loop. The subproblems do\n  not independently solve the 26-station TSP; window selection and acceptance\n  are classical.\n- No quantum advantage is claimed. Unrestricted classical 2-opt reaches\n  2,083.565 km on this network - better than the hybrid. The binding constraint\n  is the window neighbourhood, not the quantum optimizer: at W=4 the hybrid\n  reaches exactly the tour an exhaustive brute-force subsolver finds over the\n  same windows, so QAOA is solving its subproblems optimally.\n- Every run prints these points; `print_full_framing` is not optional.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Honest framing, enforced in the output"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:12",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Validation before anything is drawn",
+      "locator": "docs/PHASES.md - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Validation before anything is drawn",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Validation before anything is drawn):\n\n[Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Validation before anything is drawn]\n`validate_full_tour` checks both tours for: all 26 stations present and none\ninvented, 26 unique stations, starts at the requested station, returns to it,\nevery leg backed by a real transmission-line path with finite cost, and the\nreported total matching a recomputed route length. `same_problem_checks` then\nconfirms both solvers were given the identical station set, start, cost function\nand closure. The maps are written only if every check passes.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Validation before anything is drawn"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:13",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Visualization",
+      "locator": "docs/PHASES.md - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Visualization",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Visualization):\n\n[Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Visualization]\n`phase2/visualize.py` reuses `phase1.visualize.plot_route` rather than\nduplicating the renderer, so both maps keep Phase 1's geographic, overlap-free\nlayout and the hollow rings marking true coordinates. `phase1.layout` is\ndeterministic, so both maps share identical station coordinates and the routes\nare visually comparable.\n\nOne additive change was made to Phase 1 for this: `plot_route` gained a\n`route_label` keyword argument. It defaults to the existing Nearest Neighbour\nwording, so Phase 1 renders exactly as before, and Phase 2 passes its own text\nso a hybrid-QAOA map is never labelled a Nearest Neighbour route. Verified: a\nfresh Phase 1 render differs from an older one only in the milliseconds printed\nin the auto-generated title.\n\nOutputs: `outputs/nn_full_route.png`, `outputs/qaoa_full_route.png`,\n`outputs/nn_vs_qaoa_comparison.png`.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Visualization"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:14",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Verified at the end of Phase 2b",
+      "locator": "docs/PHASES.md - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Verified at the end of Phase 2b",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Verified at the end of Phase 2b):\n\n[Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Verified at the end of Phase 2b]\n`python -m unittest discover -s tests` -> 90 tests, OK, clean under\n`-W error::DeprecationWarning`. No IBM hardware job was submitted.\n\nAt W=5 each subproblem is a 25-qubit circuit costing roughly a minute to\nsimulate, and the search needs 6 sweeps to converge, so full sweeps would be\n~156 subproblems / ~2.7 hours. `hybrid_solve(prune=True)` (the default) applies\nthe standard local-search optimisation: a window whose seven stations - the five\nfree ones plus both fixed ends - are all unchanged since it last failed to\nimprove cannot improve now, so it is skipped. An accepted move marks its seven\nstations dirty again.\n\nVerified with the deterministic exact subsolver before being trusted:\n\n    full sweeps  : 2,386.004 km  (156 subproblem solves)\n    with pruning : 2,386.004 km  ( 85 subproblem solves)   45.5% less work\n\n`--no-prune` disables it. `TestPruningPreservesResults` covers both the pruning\nrule (deterministically, against full sweeps) and the fact that a pruned hybrid\nrun still produces a fully valid 26-station tour.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Verified at the end of Phase 2b"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:15",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Why W=5 needs more shots than W=4",
+      "locator": "docs/PHASES.md - Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Why W=5 needs more shots than W=4",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Why W=5 needs more shots than W=4):\n\n[Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Why W=5 needs more shots than W=4]\nThe feasible subspace shrinks fast. At W=4, 24 of 65,536 bitstrings are valid\norderings (3.7e-4); at W=5 it is 120 of 33,554,432 (3.6e-6) - about 100x rarer.\n512 shots per evaluation is enough at W=4 but not at W=5. Measured on three\nsample windows:\n\n    shots=2048, maxiter=15 -> 2 of 3 windows hit the exact optimum\n    shots=4096, maxiter=15 -> 3 of 3 windows hit the exact optimum\n\nSo the W=5 runs use `--shots 4096`.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2b - full-network classical vs hybrid quantum (complete) > Why W=5 needs more shots than W=4"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:16",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2 final configuration (complete)",
+      "locator": "docs/PHASES.md - Phase log > Phase 2 final configuration (complete)",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2 final configuration (complete)):\n\n[Phase log > Phase 2 final configuration (complete)]\nOne command runs everything:\n\n    python run_phase2.py\n\nIt loads the full 26-station network, lists the stations and asks which to start\nfrom, solves the network classically (Phase 1 Nearest Neighbour), solves it again\nwith the hybrid QAOA reoptimizer on the local simulator, validates both\n26-station tours, prints both routes with the comparison, and writes the three\nmaps. `--subset` selects the separate single-instance QAOA mode, which is what\n`--mode ibm` sends to hardware; nothing contacts IBM by default.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2 final configuration (complete)"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:17",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2 final configuration (complete) > Default QAOA configuration and why",
+      "locator": "docs/PHASES.md - Phase log > Phase 2 final configuration (complete) > Default QAOA configuration and why",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2 final configuration (complete) > Default QAOA configuration and why):\n\n[Phase log > Phase 2 final configuration (complete) > Default QAOA configuration and why]\nwindow W=4  -> 16 qubits per subproblem\n    depth p=2, 2048 shots, COBYLA maxiter 20 x 1 restart, CVaR alpha 0.25\n    up to 8 sweeps (converges in 2), don't-look-bits pruning on\n\nW=4 rather than W=5. W=5 (25 qubits) reaches a shorter tour - 2,386.004 km by\nexact subsolver, 20.94% under NN - but each 25-qubit subproblem costs about a\nminute of statevector simulation, so the full workflow ran ~90 minutes. That is\nnot a practical default. matrix_product_state was measured as an alternative and\nis worse, not better: a single 25-qubit QAOA circuit did not finish in 10\nminutes, because these circuits are too entangled for a tensor-network method.\nW=5 remains available with `--window 5 --hybrid-shots 4096`.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2 final configuration (complete) > Default QAOA configuration and why"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:18",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2 final configuration (complete) > Measured result (W=4, Aer simulator)",
+      "locator": "docs/PHASES.md - Phase log > Phase 2 final configuration (complete) > Measured result (W=4, Aer simulator)",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2 final configuration (complete) > Measured result (W=4, Aer simulator)):\n\n[Phase log > Phase 2 final configuration (complete) > Measured result (W=4, Aer simulator)]\nClassical Nearest Neighbour : 3,017.795 km   (1.2 ms)\n    Hybrid QAOA (full 26)       : 2,851.243 km   (89.4 s)\n    Difference                  : +166.552 km absolute, +5.52% relative\n    49 QAOA subproblems over 2 sweeps, 5 accepted, 3 windows skipped\n    Total wall time: ~90 seconds\n\n2,851.243 km is exactly the tour an exhaustive brute-force subsolver reaches over\nthe same W=4 windows, so QAOA solved its subproblems optimally; the limit is the\nwindow neighbourhood, not the quantum optimizer.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2 final configuration (complete) > Measured result (W=4, Aer simulator)"
+      }
+    },
+    {
+      "id": "doc:docs-phases-md:19",
+      "kind": "doc",
+      "title": "docs/PHASES.md - phase log and implementation notes - Phase log > Phase 2 final configuration (complete) > Verified at the end of Phase 2",
+      "locator": "docs/PHASES.md - Phase log > Phase 2 final configuration (complete) > Verified at the end of Phase 2",
+      "text": "PROJECT DOCUMENTATION, docs/PHASES.md (Phase log > Phase 2 final configuration (complete) > Verified at the end of Phase 2):\n\n[Phase log > Phase 2 final configuration (complete) > Verified at the end of Phase 2]\n`python -m unittest discover -s tests` -> 100 tests, OK, clean under\n`-W error::DeprecationWarning`. No IBM hardware job has been submitted at any\npoint in Phase 2.",
+      "metadata": {
+        "file": "docs/PHASES.md",
+        "heading": "Phase log > Phase 2 final configuration (complete) > Verified at the end of Phase 2"
+      }
+    },
+    {
+      "id": "doc:data-readme-md:0",
+      "kind": "doc",
+      "title": "data/README.md - dataset columns - data/",
+      "locator": "data/README.md - data/",
+      "text": "PROJECT DOCUMENTATION, data/README.md (data/):\n\n[data/]\nThe dataset lives here. Phase 1 auto-detects the single `*.csv` in this folder\n(currently `transmition_lines.csv.csv`); pass `--data PATH` to override.\n\nThis file is the single source of truth for the network. Nothing in this project\ngenerates, fabricates, or substitutes network data.\n\nColumns used:\n\n| Column | Role in Phase 1 |\n|--------|-----------------|\n| `Source`, `Destination` | station names — the graph nodes and edges |\n| `Distance_km` | **the TSP route cost** |\n| `Source_/Destination_Latitude/Longitude` | map positions |\n| `Type` | station label on the map |\n| `Voltage_kV`, `Capacity_MW`, `Loss_Percent`, `Energy_Loss_MW` | carried through untouched; `Energy_Loss_MW` is what the route loss costing sums |\n\nTwo further columns are **calculated**, not source data, and are appended after\nevery column above:\n\n| Column | Definition |\n|--------|------------|\n| `Loss_Cost_Per_Hour_INR` | `Energy_Loss_MW x 1000 x 6.60` |\n| `Loss_Cost_Per_Year_INR` | hourly cost `x 8760` - an annualised **estimate** |\n\nThey are owned by `python -m energy_cost.recompute`, which rewrites them without\ntouching a single source value. The rate is the verified KERC HT-2(a) energy\ncharge; `../DATASET.md` documents the order, the formulas, the 8,760-hour\nassumption and what the rate excludes.\n\nThe CSV itself is intentionally not committed (see the entry in `.gitignore`\nif you decide to exclude it).",
+      "metadata": {
+        "file": "data/README.md",
+        "heading": "data/"
+      }
+    }
+  ]
+}

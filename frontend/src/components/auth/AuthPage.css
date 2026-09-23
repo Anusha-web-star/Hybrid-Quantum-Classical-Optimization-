@@ -1,0 +1,482 @@
+/*
+ * Access screen, built to the reference.
+ *
+ * Palette is taken from the reference itself: near-black navy ground, a card
+ * outlined in glowing cyan, and a teal gradient panel divided from the form by
+ * a diagonal. These tokens are local to this screen; the console keeps its own.
+ */
+
+.auth {
+  --navy-deep: #04080e;
+  --navy: #081420;
+  --navy-lift: #0b1a29;
+  --cyan: #35c9ea;
+  --cyan-bright: #6fe0f5;
+  --cyan-deep: #1a7fa3;
+  --teal-dark: #14556c;
+  --ink-on-panel: #f2fbff;
+
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: var(--s6);
+  font-family: 'Poppins', var(--sans);
+  background:
+    radial-gradient(80% 60% at 50% 42%, #0a1826 0%, var(--navy-deep) 70%);
+  overflow: hidden;
+}
+
+/* Returns to the intro. Subtle, top-left, clear of the card's glow. */
+.auth__back {
+  position: absolute;
+  top: clamp(14px, 2.4vw, 28px);
+  left: clamp(14px, 2.4vw, 32px);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 15px;
+  color: #cfeefb;
+  font-family: 'Poppins', var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 999px;
+  border: 1px solid rgba(120, 226, 248, 0.28);
+  background: rgba(8, 20, 32, 0.4);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition: color 180ms ease, border-color 180ms ease, background 180ms ease,
+    transform 120ms ease;
+}
+
+.auth__back:hover {
+  color: #eaf9ff;
+  border-color: rgba(120, 226, 248, 0.6);
+  background: rgba(11, 26, 41, 0.6);
+}
+
+.auth__back:active {
+  transform: translateY(1px);
+}
+
+.auth__back:focus-visible {
+  outline: 2px solid rgba(111, 224, 245, 0.8);
+  outline-offset: 2px;
+}
+
+/* The ambient bloom the card sits in. */
+.auth__glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(46% 36% at 50% 46%, rgba(53, 201, 234, 0.14), transparent 72%);
+}
+
+/* --- the card -------------------------------------------------------------- */
+.auth__card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: min(940px, 100%);
+  min-height: 500px;
+  background: var(--navy);
+  border: 1.5px solid var(--cyan);
+  border-radius: 12px;
+  overflow: hidden;
+  /* The reference's defining effect: a lit cyan edge bleeding into the dark. */
+  box-shadow:
+    0 0 22px rgba(53, 201, 234, 0.42),
+    0 0 70px rgba(53, 201, 234, 0.2),
+    0 0 130px rgba(53, 201, 234, 0.09),
+    inset 0 0 34px rgba(53, 201, 234, 0.05);
+  animation: card-in 640ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+}
+
+/* --- the sweeping panel ---------------------------------------------------- */
+.auth__panel {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(
+    214deg,
+    #6ed2e8 0%,
+    #3aa4c4 26%,
+    #23789a 58%,
+    #124e64 100%
+  );
+  /* The clipped edge carries its own light, as the reference's does. */
+  filter: drop-shadow(-1px 0 5px rgba(96, 216, 244, 0.55));
+  transition: clip-path 430ms cubic-bezier(0.65, 0, 0.35, 1);
+  /* Login: panel right, inner edge slanted, wider at the top. */
+  clip-path: polygon(44% 0%, 100% 0%, 100% 100%, 66% 100%);
+}
+
+.auth__card--register .auth__panel {
+  clip-path: polygon(0% 0%, 56% 0%, 34% 100%, 0% 100%);
+}
+
+/* Mid-sweep the panel owns the card and hides the swap. */
+.auth__card.is-sweeping .auth__panel {
+  clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+}
+
+/*
+ * The second, darker wedge. In the reference the panel reads as two stacked
+ * planes rather than one flat fill.
+ */
+.auth__facet {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(200deg, rgba(3, 24, 36, 0.5), rgba(3, 24, 36, 0.16));
+  clip-path: polygon(0% 0%, 40% 0%, 0% 88%);
+  transition: opacity 300ms ease;
+}
+
+.auth__card--register .auth__facet {
+  clip-path: polygon(100% 0%, 100% 84%, 58% 0%);
+}
+
+.auth__panelinner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  width: 34%;
+  height: 100%;
+  margin-left: 66%;
+  padding: var(--s8) var(--s5);
+  justify-content: center;
+  transition: margin 430ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.auth__card--register .auth__panelinner {
+  margin-left: 0;
+  width: 34%;
+}
+
+.auth__card.is-sweeping .auth__panelinner,
+.auth__card.is-sweeping .auth__facet {
+  opacity: 0;
+  transition: opacity 170ms ease;
+}
+
+.auth__mark {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+}
+
+/* "WELCOME BACK!" - white, heavy, uppercase, stacked. */
+.auth__welcome {
+  display: flex;
+  flex-direction: column;
+  color: var(--ink-on-panel);
+  font-size: clamp(1.4rem, 1.1rem + 1.1vw, 1.95rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 18px rgba(2, 20, 30, 0.4);
+}
+
+.auth__rule {
+  width: 34px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 2px;
+}
+
+.auth__tag {
+  max-width: 22ch;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 11.5px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* --- the form side --------------------------------------------------------- */
+.auth__side {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--s4);
+  grid-column: 1;
+  padding: var(--s8) clamp(var(--s6), 6%, var(--s10));
+  min-width: 0;
+}
+
+.auth__card--register .auth__side {
+  grid-column: 2;
+}
+
+.auth__card.is-sweeping .auth__side {
+  opacity: 0;
+  transition: opacity 190ms ease;
+}
+
+.auth__form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Centred over the form, as in the reference. */
+.auth__title {
+  margin-bottom: var(--s4);
+  color: #fff;
+  font-family: 'Poppins', var(--sans);
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+
+/* --- fields ----------------------------------------------------------------- */
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+.field__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.field__label {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12.5px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.field__icon {
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.78);
+  transition: color 200ms ease;
+}
+
+.field__input {
+  width: 100%;
+  padding: 4px 0 7px;
+  color: #fff;
+  font-family: 'Poppins', var(--sans);
+  font-size: 13.5px;
+  background: none;
+  border: 0;
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.82);
+  outline: none;
+  transition: border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.field__input:focus {
+  border-bottom-color: var(--cyan-bright);
+  box-shadow: 0 2px 12px -6px var(--cyan-bright);
+}
+
+.field__input:focus ~ .field__error {
+  color: transparent;
+}
+
+.field:focus-within .field__icon {
+  color: var(--cyan-bright);
+}
+
+.field__input:-webkit-autofill {
+  -webkit-text-fill-color: #fff;
+  -webkit-box-shadow: 0 0 0 1000px var(--navy) inset;
+}
+
+.field.is-bad .field__input {
+  border-bottom-color: #ff8f8a;
+}
+
+/* Reserved so an error never shifts the layout. */
+.field__error {
+  min-height: 15px;
+  color: #ff8f8a;
+  font-size: 10.5px;
+  line-height: 15px;
+}
+
+/* --- the pill button --------------------------------------------------------- */
+.auth__submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+  padding: 11px var(--s5);
+  color: #fff;
+  font-family: 'Poppins', var(--sans);
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: linear-gradient(180deg, #3fb6d8 0%, #2694bb 52%, #1b7ba1 100%);
+  border: 1px solid rgba(120, 226, 248, 0.55);
+  border-radius: 999px;
+  /* Glossy top edge and outer bloom, as the reference button has. */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -6px 14px rgba(4, 30, 42, 0.35),
+    0 6px 22px rgba(53, 201, 234, 0.3);
+  transition: filter 200ms ease, transform 120ms ease, box-shadow 220ms ease;
+}
+
+.auth__submit:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 10px 30px rgba(53, 201, 234, 0.42);
+}
+
+.auth__submit:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.auth__submit:disabled {
+  cursor: progress;
+  opacity: 0.85;
+}
+
+.auth__spin {
+  animation: spin 900ms linear infinite;
+}
+
+/* --- switch prompt, stacked and centred -------------------------------------- */
+.auth__switch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  margin-top: var(--s2);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 11.5px;
+}
+
+.auth__switch button {
+  color: var(--cyan-bright);
+  font-family: 'Poppins', var(--sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  transition: color 160ms ease, text-shadow 160ms ease;
+}
+
+.auth__switch button:hover:not(:disabled) {
+  color: #a8eeff;
+  text-shadow: 0 0 12px rgba(111, 224, 245, 0.6);
+}
+
+.auth__switch button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.auth__note {
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 10px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.auth__peek {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: inherit;
+}
+
+.auth__peek:hover {
+  color: var(--cyan-bright);
+}
+
+/* --- responsive ---------------------------------------------------------------
+ * The slant needs width. Below the breakpoint the panel becomes a straight band
+ * across the top and the card stacks.
+ */
+@media (max-width: 800px) {
+  .auth__card,
+  .auth__card--register {
+    grid-template-columns: 1fr;
+    grid-template-rows: 148px 1fr;
+    min-height: 0;
+  }
+
+  .auth__panel,
+  .auth__card--register .auth__panel,
+  .auth__card.is-sweeping .auth__panel {
+    position: relative;
+    grid-row: 1;
+    clip-path: none;
+  }
+
+  .auth__facet {
+    display: none;
+  }
+
+  .auth__panelinner,
+  .auth__card--register .auth__panelinner {
+    width: 100%;
+    margin-left: 0;
+    padding: var(--s5);
+    gap: var(--s2);
+  }
+
+  .auth__side,
+  .auth__card--register .auth__side {
+    grid-column: 1;
+    grid-row: 2;
+    padding: var(--s6) var(--s5);
+  }
+
+  .auth__tag {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth__card {
+    animation: none;
+  }
+
+  .auth__panel,
+  .auth__panelinner {
+    transition: none;
+  }
+}
+
+/* --- form-level outcome ------------------------------------------------------
+ * A rejected sign-in, or the confirm-your-email notice. Sits between the last
+ * field and the button, in the card's own palette - the red is the same
+ * #ff8f8a the field errors already use, and the affirmative tone borrows the
+ * card's cyan rather than introducing a new colour.
+ */
+.auth__alert {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.auth__alert--bad {
+  color: #ff8f8a;
+}
+
+.auth__alert--ok {
+  color: var(--cyan-bright);
+}

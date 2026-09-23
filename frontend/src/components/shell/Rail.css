@@ -1,0 +1,208 @@
+.rail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s6);
+  height: var(--rail-h);
+  padding: 0 var(--s4);
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--line);
+}
+
+/* --- brand --------------------------------------------------------------- */
+.rail__brand {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  min-width: 0;
+}
+
+.rail__mark {
+  align-self: center;
+  color: var(--accent);
+  flex: none;
+}
+
+.rail__name {
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  white-space: nowrap;
+}
+
+.rail__what {
+  color: var(--ink-3);
+  font-size: var(--t-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- live facts, in place of a hero paragraph --------------------------- */
+.rail__facts {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s5);
+  flex: none;
+}
+
+.fact {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.fact__v {
+  color: var(--ink);
+  font-size: var(--t-md);
+  font-weight: 550;
+}
+
+.fact__v--text {
+  color: var(--ok);
+  font-family: var(--mono);
+  font-size: var(--t-xs);
+}
+
+.fact__u {
+  color: var(--ink-4);
+  font-size: var(--t-2xs);
+}
+
+.rail__loading {
+  color: var(--ink-4);
+  font-size: var(--t-2xs);
+}
+
+/* --- right ---------------------------------------------------------------- */
+.rail__right {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex: none;
+}
+
+.rail__dataset {
+  color: var(--ink-4);
+  font-size: var(--t-3xs);
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+}
+
+.conn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  font-family: var(--mono);
+  font-size: var(--t-3xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+
+.conn__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.conn--live {
+  color: var(--ok);
+  border-color: rgba(86, 185, 129, 0.3);
+}
+
+.conn--wait {
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+
+.conn--down {
+  color: var(--bad);
+  border-color: rgba(217, 100, 95, 0.32);
+}
+
+.conn__spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1280px) {
+  .rail__what {
+    display: none;
+  }
+}
+
+@media (max-width: 1080px) {
+  .rail__dataset {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .rail {
+    gap: var(--s3);
+    padding: 0 var(--s3);
+  }
+
+  .rail__facts {
+    gap: var(--s3);
+  }
+
+  .fact:nth-child(n + 3) {
+    display: none;
+  }
+}
+
+/* --- who is signed in, and the way out ---------------------------------------
+ * Same muted register as the dataset name beside it: this is provenance, not a
+ * control the operator needs drawn to. The button only lifts on hover.
+ */
+.rail__who {
+  color: var(--ink-3);
+  font-size: var(--t-3xs);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail__signout {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-3);
+  font: inherit;
+  font-size: var(--t-3xs);
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.rail__signout:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--bg-hover);
+}
+
+.rail__signout:focus-visible {
+  outline: 2px solid var(--line-focus);
+  outline-offset: 2px;
+}

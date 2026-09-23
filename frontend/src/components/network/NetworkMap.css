@@ -1,0 +1,250 @@
+.netmap {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+
+.netmap__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: visible;
+}
+
+/* --- tethers: a nudged node still shows where it truly sits -------------- */
+.netmap__tether {
+  stroke: var(--ink-4);
+  stroke-width: 0.7;
+  stroke-dasharray: 2 2.5;
+  opacity: 0.5;
+}
+
+.netmap__anchor {
+  fill: var(--ink-4);
+  opacity: 0.65;
+}
+
+/* --- transmission lines -------------------------------------------------- */
+.netmap__lines {
+  transition: opacity var(--slow) var(--ease);
+}
+
+.netmap__lines.is-muted {
+  opacity: 0.26;
+}
+
+.netmap__line {
+  stroke: var(--network-line);
+  stroke-width: 1.15;
+  transition: stroke var(--base) var(--ease), stroke-width var(--base) var(--ease);
+}
+
+.netmap__line.is-active {
+  stroke: var(--accent);
+  stroke-width: 2.2;
+}
+
+/* --- tours ---------------------------------------------------------------- */
+/*
+ * The route ahead, so the shape the tour will take stays visible while it is
+ * being traversed. The travelled portion is drawn over it.
+ */
+.netmap__routeahead {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+  opacity: 0.2;
+  stroke-dasharray: 5 6;
+}
+
+/*
+ * No CSS animation here on purpose. The playback clock writes stroke-dashoffset
+ * every frame, which is what paces the traversal.
+ */
+.netmap__routeline {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.6;
+}
+
+.netmap__route--classical .netmap__routeline,
+.netmap__route--classical .netmap__routeahead {
+  stroke: var(--classical);
+}
+
+.netmap__route--quantum .netmap__routeline,
+.netmap__route--quantum .netmap__routeahead {
+  stroke: var(--quantum);
+}
+
+/* --- the travelling head ---------------------------------------------------- */
+.netmap__head {
+  transition: opacity var(--fast) var(--ease);
+  pointer-events: none;
+}
+
+.netmap__headhalo {
+  opacity: 0.22;
+}
+
+.netmap__route--classical .netmap__headhalo,
+.netmap__route--classical .netmap__headdot {
+  fill: var(--classical);
+}
+
+.netmap__route--quantum .netmap__headhalo,
+.netmap__route--quantum .netmap__headdot {
+  fill: var(--quantum);
+}
+
+/*
+ * In the comparison view the classical tour is drawn wider and softer, so a
+ * segment both solvers chose shows the amber line cored inside a pale halo
+ * instead of one route simply hiding the other.
+ */
+.netmap__route--classical.is-overlaid .netmap__routeline {
+  stroke-width: 7;
+  opacity: 0.5;
+}
+
+.netmap__route--classical.is-overlaid .netmap__routeahead {
+  stroke-width: 4;
+  opacity: 0.12;
+}
+
+/* --- labels ---------------------------------------------------------------- */
+.netmap__label {
+  fill: var(--ink-3);
+  font-family: var(--mono);
+  letter-spacing: 0.01em;
+  /* A thin halo of the page ground keeps a label legible over a line. */
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3.5;
+  stroke-linejoin: round;
+  pointer-events: none;
+  transition: fill var(--base) var(--ease);
+}
+
+.netmap__label.is-start {
+  fill: var(--ok);
+  font-weight: 600;
+}
+
+.netmap__label.is-active {
+  fill: var(--ink);
+}
+
+/* Drawn when a label had to sit away from its node. */
+.netmap__leader {
+  stroke: var(--ink-4);
+  stroke-width: 0.7;
+  opacity: 0.55;
+}
+
+/* --- stations -------------------------------------------------------------- */
+.netmap__node {
+  cursor: pointer;
+  outline: none;
+}
+
+.netmap__hit {
+  fill: transparent;
+}
+
+.netmap__dot {
+  fill: var(--bg);
+  stroke: var(--ink-2);
+  stroke-width: 1.7;
+  transition:
+    fill var(--base) var(--ease),
+    stroke var(--base) var(--ease),
+    stroke-width var(--base) var(--ease);
+}
+
+.netmap__node.is-active .netmap__dot {
+  fill: var(--accent);
+  stroke: var(--accent);
+  stroke-width: 2.4;
+}
+
+.netmap__node:focus-visible .netmap__dot {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+/* --- the origin, unmistakable ---------------------------------------------- */
+.netmap__node.is-start .netmap__dot {
+  fill: var(--ok);
+  stroke: var(--ok);
+}
+
+.netmap__startring {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: 1.4;
+  opacity: 0.9;
+}
+
+/* --- traversal state ---------------------------------------------------------
+ * Visited stations stay filled so the path taken is readable at a glance;
+ * stations still to come keep their outline. Nothing is hidden.
+ */
+.netmap__node.is-visited .netmap__dot {
+  fill: var(--ink-2);
+  stroke: var(--ink-2);
+}
+
+.netmap__node.is-current .netmap__dot {
+  fill: var(--accent-bright);
+  stroke: var(--accent-bright);
+  stroke-width: 2.4;
+}
+
+.netmap__node.is-start.is-visited .netmap__dot,
+.netmap__node.is-start.is-current .netmap__dot {
+  fill: var(--ok);
+  stroke: var(--ok);
+}
+
+.netmap__currentring {
+  fill: none;
+  stroke: var(--accent-bright);
+  stroke-width: 1.5;
+  opacity: 0.75;
+}
+
+.netmap__node.is-current .netmap__label,
+.netmap__label.is-current {
+  fill: var(--accent-bright);
+}
+
+/* --- hover callout ---------------------------------------------------------- */
+.netmap__callout {
+  animation: fade-in var(--fast) var(--ease-out) both;
+}
+
+.netmap__calloutbg {
+  fill: rgba(10, 11, 13, 0.97);
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.netmap__calloutname {
+  fill: var(--ink);
+  font-family: var(--sans);
+  font-weight: 600;
+}
+
+.netmap__calloutmeta {
+  fill: var(--ink-3);
+  font-family: var(--mono);
+}
+
+.netmap__calloutmeta.is-start {
+  fill: var(--ok);
+}

@@ -1,0 +1,202 @@
+.energy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  padding-top: var(--s4);
+}
+
+.energy__top {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: var(--s5);
+}
+
+.energy__coverage,
+.energy__absent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.energy__cov,
+.energy__abs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s5);
+}
+
+.cov,
+.abs {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cov__n {
+  color: var(--ok);
+  font-size: var(--t-lg);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.cov__k,
+.abs__k {
+  color: var(--ink-4);
+  font-size: var(--t-3xs);
+}
+
+.abs__v {
+  color: var(--ink-4);
+  font-size: var(--t-lg);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.14em;
+}
+
+.energy__note {
+  color: var(--ink-4);
+  font-size: var(--t-2xs);
+  line-height: 1.55;
+  max-width: 60ch;
+}
+
+/* --- table ----------------------------------------------------------------- */
+.energy__tablewrap {
+  max-height: 300px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-surface);
+  overflow: auto;
+}
+
+.energy__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-xs);
+}
+
+.energy__table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0;
+  text-align: right;
+  background: var(--bg-inset);
+  border-bottom: 1px solid var(--line);
+}
+
+.energy__table thead th:first-child {
+  padding: var(--s2) var(--s4);
+  color: var(--ink-4);
+  font-family: var(--mono);
+  font-size: var(--t-3xs);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.energy__sort {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  width: 100%;
+  padding: var(--s2) var(--s4);
+  color: var(--ink-4);
+  font-family: var(--mono);
+  font-size: var(--t-3xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: color var(--fast) var(--ease);
+}
+
+.energy__sort:hover,
+.energy__sort.is-on {
+  color: var(--accent);
+}
+
+/* Alternating tint instead of a hairline under all 38 rows. */
+.energy__table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.016);
+}
+
+.energy__table tbody tr:hover {
+  background: var(--bg-hover);
+}
+
+.energy__table tbody th {
+  padding: 6px var(--s4);
+  color: var(--ink-2);
+  font-size: var(--t-xs);
+  font-weight: 400;
+  text-align: left;
+  line-height: 1.4;
+}
+
+.energy__to {
+  color: var(--ink-4);
+}
+
+.energy__table td {
+  padding: 6px var(--s4);
+  color: var(--ink-3);
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* --- derived slots, once a run has filled them ---------------------------- */
+/*
+ * A filled slot reads as a real figure rather than a waiting one: the value
+ * takes ink colour and loses the wide tracking the "--" placeholder uses.
+ */
+.abs.is-filled .abs__v {
+  color: var(--accent);
+  letter-spacing: 0;
+}
+
+.abs__s {
+  color: var(--ink-4);
+  font-size: var(--t-3xs);
+  margin-top: 2px;
+}
+
+.energy__note .mono {
+  color: var(--ink-3);
+}
+
+/* --- which lines the routes actually run over ----------------------------- */
+.energy__on {
+  white-space: nowrap;
+}
+
+.energy__table tbody tr.is-used th[scope='row'] {
+  color: var(--ink);
+}
+
+.tag {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: var(--t-3xs);
+  line-height: 1.4;
+  letter-spacing: 0.03em;
+}
+
+.tag--nn {
+  border-color: var(--line-strong);
+  color: var(--classical);
+}
+
+.tag--qa {
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+
+.tag--both {
+  border-color: var(--accent-line);
+  background: var(--accent-wash);
+  color: var(--accent-bright);
+}

@@ -1,0 +1,402 @@
+/*
+ * Assistant panel.
+ *
+ * Same instrument-panel language as the rest of the drawer: hairlines instead
+ * of cards, amber only where it encodes something, no bubbles. A question is a
+ * dim mono line; an answer is body text against a hairline rule. The one place
+ * a second colour appears is an ungrounded answer, which uses the same warning
+ * hue the rest of the app already uses for a real problem.
+ */
+
+.asst {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  height: 100%;
+  min-height: 0;
+  padding-top: var(--s2);
+}
+
+/* --- header ---------------------------------------------------------------- */
+.asst__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+
+.asst__title {
+  margin: 0;
+  color: var(--ink);
+  font-size: var(--t-sm);
+  font-weight: 500;
+}
+
+.asst__sub {
+  margin: 3px 0 0;
+  max-width: 62ch;
+  color: var(--ink-4);
+  font-size: var(--t-2xs);
+  line-height: 1.5;
+}
+
+.asst__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  padding: 5px var(--s2);
+  color: var(--ink-3);
+  font-size: var(--t-2xs);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  cursor: pointer;
+  transition: color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+
+.asst__clear:hover {
+  color: var(--ink-2);
+  border-color: var(--line-strong);
+}
+
+/* --- transcript ------------------------------------------------------------ */
+.asst__thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: var(--s1);
+}
+
+.asst__empty {
+  margin: 0;
+  padding: var(--s5) 0;
+  color: var(--ink-4);
+  font-size: var(--t-xs);
+  line-height: 1.6;
+}
+
+.asst__turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.asst__q {
+  margin: 0;
+  padding-left: var(--s3);
+  border-left: 2px solid var(--line-strong);
+  color: var(--ink-2);
+  font-size: var(--t-xs);
+  line-height: 1.5;
+}
+
+.asst__a {
+  padding-left: var(--s3);
+  border-left: 2px solid var(--accent-line);
+}
+
+.asst__a.is-ungrounded {
+  border-left-color: var(--bad);
+}
+
+.asst__text {
+  margin: 0;
+  max-width: 78ch;
+  color: var(--ink);
+  font-size: var(--t-sm);
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.asst__flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 5px;
+  color: var(--bad);
+  font-size: var(--t-3xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* --- working state --------------------------------------------------------- */
+.asst__working {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0;
+  padding-left: var(--s3);
+  border-left: 2px solid var(--line);
+  color: var(--ink-4);
+  font-size: var(--t-2xs);
+}
+
+.asst__clock {
+  margin-left: auto;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.asst__slow {
+  margin: 5px 0 0;
+  padding-left: var(--s3);
+  max-width: 64ch;
+  color: var(--ink-4);
+  font-size: var(--t-3xs);
+  line-height: 1.5;
+}
+
+.asst__pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  animation: asst-pulse 1.1s var(--ease) infinite;
+}
+
+@keyframes asst-pulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+/* --- sources --------------------------------------------------------------- */
+.asst__sources {
+  margin-left: var(--s3);
+}
+
+.asst__srcsum {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--ink-4);
+  font-size: var(--t-3xs);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.asst__srcsum::-webkit-details-marker {
+  display: none;
+}
+
+.asst__srcsum:hover {
+  color: var(--ink-3);
+}
+
+.asst__srckinds {
+  display: inline-flex;
+  gap: var(--s2);
+}
+
+.asst__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.asst__kind--dataset { color: var(--classical); }
+.asst__kind--doc { color: var(--ink-3); }
+.asst__kind--code { color: var(--ink-3); }
+.asst__kind--solver { color: var(--accent); }
+
+.asst__live {
+  padding: 1px 5px;
+  color: var(--accent);
+  font-size: var(--t-3xs);
+  background: var(--accent-wash);
+  border-radius: var(--r-pill);
+}
+
+.asst__srclist {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: var(--s2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.asst__src {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  font-size: var(--t-3xs);
+  line-height: 1.5;
+}
+
+.asst__dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--r-pill);
+  transform: translateY(-1px);
+}
+
+.asst__dot--dataset { background: var(--classical); }
+.asst__dot--doc { background: var(--ink-4); }
+.asst__dot--code { background: var(--ink-4); }
+.asst__dot--solver { background: var(--accent); }
+
+.asst__srctitle {
+  color: var(--ink-2);
+}
+
+.asst__srcloc {
+  color: var(--ink-4);
+  margin-left: auto;
+  padding-left: var(--s3);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 42%;
+}
+
+/* --- error ----------------------------------------------------------------- */
+.asst__error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s3);
+  color: var(--bad);
+  background: var(--bad-wash);
+  border: 1px solid var(--bad);
+  border-radius: var(--r-surface);
+}
+
+.asst__errtitle {
+  margin: 0;
+  font-size: var(--t-xs);
+  font-weight: 500;
+}
+
+.asst__errmsg {
+  margin: 3px 0 0;
+  color: var(--ink-2);
+  font-size: var(--t-2xs);
+  line-height: 1.5;
+}
+
+.asst__errcmd {
+  margin: var(--s2) 0 0;
+  padding: 5px var(--s2);
+  color: var(--ink-3);
+  font-size: var(--t-3xs);
+  background: var(--bg-inset);
+  border-radius: var(--r-control);
+  overflow-x: auto;
+}
+
+.asst__dismiss {
+  flex: none;
+  margin-left: auto;
+  padding: 4px var(--s2);
+  color: var(--ink-2);
+  font-size: var(--t-3xs);
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-control);
+  cursor: pointer;
+}
+
+.asst__dismiss:hover {
+  color: var(--ink);
+  border-color: var(--line-focus);
+}
+
+/* --- seeded questions ------------------------------------------------------ */
+.asst__examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  flex: none;
+}
+
+.asst__chip {
+  padding: 5px var(--s3);
+  color: var(--ink-3);
+  font-size: var(--t-2xs);
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+
+.asst__chip:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: var(--accent-line);
+}
+
+.asst__chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* --- composer -------------------------------------------------------------- */
+.asst__form {
+  display: flex;
+  gap: var(--s2);
+  flex: none;
+  padding-top: var(--s1);
+}
+
+.asst__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--t-sm);
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  transition: border-color var(--fast) var(--ease);
+}
+
+.asst__input::placeholder {
+  color: var(--ink-4);
+}
+
+.asst__input:focus {
+  outline: none;
+  border-color: var(--line-focus);
+}
+
+.asst__input:disabled {
+  opacity: 0.55;
+}
+
+.asst__send {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: var(--r-control);
+  cursor: pointer;
+  transition: background var(--fast) var(--ease);
+}
+
+.asst__send:hover:not(:disabled) {
+  background: var(--accent-bright);
+}
+
+.asst__send:disabled {
+  color: var(--ink-4);
+  background: var(--bg-hover);
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .asst__srcloc {
+    display: none;
+  }
+}

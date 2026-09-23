@@ -1,0 +1,156 @@
+/*
+ * Stage on top, docked bar underneath. Nothing in the bar can overlap the map,
+ * and nothing on the map can cover the bar.
+ */
+.canvas {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  background:
+    radial-gradient(120% 90% at 50% 8%, rgba(227, 164, 79, 0.045), transparent 62%),
+    var(--bg);
+  overflow: hidden;
+}
+
+.canvas__stage {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.canvas__state {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  padding: var(--s8);
+}
+
+/* --- view switch, parked in empty sky at the top left --------------------- */
+.canvas__tabs {
+  position: absolute;
+  top: var(--s4);
+  left: var(--s4);
+  z-index: 3;
+  display: flex;
+  gap: 1px;
+  padding: 3px;
+  background: rgba(16, 18, 22, 0.86);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+}
+
+.canvas__marker {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  background: var(--bg-hover);
+  border-radius: var(--r-pill);
+  transition:
+    transform var(--base) var(--ease),
+    width var(--base) var(--ease);
+}
+
+.canvas__tab {
+  position: relative;
+  z-index: 1;
+  padding: 5px 13px;
+  color: var(--ink-3);
+  font-family: var(--mono);
+  font-size: var(--t-3xs);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-radius: var(--r-pill);
+  transition: color var(--base) var(--ease);
+}
+
+.canvas__tab:hover:not(:disabled) {
+  color: var(--ink-2);
+}
+
+.canvas__tab.is-on {
+  color: var(--ink);
+}
+
+.canvas__tab:disabled {
+  opacity: 0.34;
+  cursor: not-allowed;
+}
+
+/* --- the docked bar -------------------------------------------------------- */
+.canvas__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s5);
+  flex-wrap: wrap-reverse;
+  padding: var(--s2) var(--s4);
+  background: var(--bg-raised);
+  border-top: 1px solid var(--line);
+}
+
+.canvas__legend {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  flex-wrap: wrap;
+}
+
+.key {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-3);
+  font-size: var(--t-3xs);
+  white-space: nowrap;
+}
+
+.key__line {
+  width: 15px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.key__line--classical {
+  background: var(--classical);
+}
+
+.key__line--quantum {
+  background: var(--accent);
+}
+
+.key__line--net {
+  background: var(--network-line);
+}
+
+.key__dot {
+  width: 7px;
+  height: 7px;
+  margin: 0 4px;
+  background: var(--ok);
+  border-radius: 50%;
+}
+
+/* The origin, named. It replaces a generic "Origin" swatch. */
+.key--origin {
+  max-width: 240px;
+  color: var(--ok);
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 900px) {
+  .canvas__bar {
+    gap: var(--s3);
+  }
+
+  .key--origin {
+    max-width: 140px;
+  }
+}
