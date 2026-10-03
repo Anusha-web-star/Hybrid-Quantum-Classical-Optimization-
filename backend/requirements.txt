@@ -28,9 +28,18 @@ PyJWT[crypto]==2.13.0
 pytest==9.1.1
 httpx==0.28.1
 
-# The API imports phase1/ and phase2/ from the repository root rather than
-# reimplementing them, so it also needs what those already require:
-#   pandas, matplotlib          (dataset loading and the route maps)
-#   qiskit, qiskit-aer          (the hybrid QAOA simulator)
-# Install them with:
-#   pip install pandas matplotlib qiskit qiskit-aer qiskit-ibm-runtime
+# Solvers. The API imports phase1/ and phase2/ from the repository root rather
+# than reimplementing them, so it needs what those require. These were a comment
+# here until deployment: a fresh install (Render's build, a new contributor's
+# venv) got a backend that imported and then failed on the first solve. Pinned
+# to the versions this project is developed and tested against.
+pandas==3.0.5
+matplotlib==3.11.1          # route maps; phase1/visualize.py sets the Agg backend
+qiskit==2.5.2
+qiskit-aer==0.17.2          # the local QAOA simulator - every run uses this
+
+# qiskit-ibm-runtime is deliberately NOT here. phase2/backends.py imports it
+# lazily, inside the IBM branch only, so leaving it out keeps the deployed image
+# smaller and makes submitting a hardware job impossible rather than merely
+# unconfigured. Install it locally for `run_phase2.py --mode ibm`:
+#   pip install qiskit-ibm-runtime==0.49.0

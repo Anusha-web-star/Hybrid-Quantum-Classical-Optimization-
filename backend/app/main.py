@@ -74,10 +74,14 @@ def create_app() -> FastAPI:
         openapi_tags=TAGS_METADATA,
     )
 
-    # The React dev server will live here from the frontend phase onward.
+    # The Vite dev server plus any deployed frontend origin. The list comes from
+    # settings so a hosted frontend is added with CORS_ALLOWED_ORIGINS in the
+    # environment rather than by editing this file; the two localhost origins are
+    # always included, so the local setup needs no configuration. Never "*":
+    # allow_credentials=True with a wildcard is rejected by every browser.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

@@ -47,6 +47,19 @@ class Settings(BaseSettings):
     # This project signs with ES256, so it is left empty and unused.
     supabase_jwt_secret: str = ""
 
+    # --- CORS ---------------------------------------------------------------
+    # Browser origins allowed to call this API. The Vite dev server is always
+    # permitted, so the local setup keeps working with nothing configured; a
+    # deployed frontend is added through CORS_ALLOWED_ORIGINS, comma-separated:
+    #
+    #   CORS_ALLOWED_ORIGINS=https://gridopt.onrender.com,https://gridopt-pr-2.onrender.com
+    #
+    # Deliberately a plain string rather than list[str]: pydantic-settings parses
+    # a list-typed field from the environment as JSON, so the comma-separated
+    # form every host's dashboard encourages would fail to load at startup.
+    # Splitting here accepts what people actually type.
+    cors_allowed_origins: str = ""
+
     # Dataset location. The CSV is the source of truth for the network; the
     # exact filename is discovered by Phase 1's own loader, so the dataset is
     # never renamed or duplicated to suit the API.
@@ -103,6 +116,22 @@ class Settings(BaseSettings):
     qaoa_restarts: int = 1
     qaoa_cvar: float = 0.25
     qaoa_seed: int = 7
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Allowed browser origins: the dev server, plus whatever is configured.
+
+        The local pair is unconditional so a developer never has to set this to
+        get the dev server talking to the API. Trailing slashes are stripped
+        because an `Origin` header never has one, and a configured
+        "https://app.example.com/" would silently match nothing.
+        """
+        origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
+        for raw in self.cors_allowed_origins.split(","):
+            origin = raw.strip().rstrip("/")
+            if origin and origin not in origins:
+                origins.append(origin)
+        return origins
 
     @property
     def data_path(self) -> Path:
